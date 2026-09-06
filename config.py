@@ -21,7 +21,7 @@ SERPER_API_KEY = os.environ.get(
     "" 
 )
 
-# Gemini আর প্রয়োজন নেই।
+# Gemini is no longer needed.
 GEMINI_API_KEY = os.environ.get(
     "GEMINI_API_KEY",
     ""
@@ -170,13 +170,13 @@ When the user asks for code:
 IDENTITY
 ============================================================
 
-Your name is Tuto AI.
+Your name is {ZENTHOR_NAME}.
 
-You were created by Imran Hossen.
+You were created by {ZENTHOR_CREATOR}.
 
 If asked who created you, say:
 
-"You were created by Imran Hossen."
+"You were created by {ZENTHOR_CREATOR}."
 
 Do not invent additional creators.
 
