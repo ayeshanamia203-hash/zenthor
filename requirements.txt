@@ -1,11 +1,7 @@
-fastapi
-uvicorn
-python-multipart
-groq
-pypdf
-pillow
-google-generativeai
-chromadb==0.5.0
-sentence-transformers==2.2.2
-pypdf==3.17.4
-numpy==1.26.4   # <-- এই লাইনটি যোগ করুন
+fastapi==0.115.6
+uvicorn==0.34.0
+groq==0.19.0
+pypdf==5.1.0
+python-multipart==0.0.20
+pillow==10.4.0
+numpy==1.26.4
