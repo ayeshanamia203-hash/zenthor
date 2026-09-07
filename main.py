@@ -1,7 +1,7 @@
 # ============================================================
 # ZENTHOR - MAIN.PY
 # Horizontal General Purpose AI
-# Groq Text + Groq Vision + Groq Whisper
+# Groq Text + Groq Vision + Groq Whisper + RAG
 # NO GEMINI
 # ============================================================
 
@@ -10,6 +10,7 @@ import io
 import os
 import re
 import tempfile
+from datetime import datetime  # Added for RAG metadata
 from pathlib import Path
 
 from fastapi import (
@@ -25,7 +26,8 @@ from groq import Groq
 
 import uvicorn
 
-from ai_brain import ask_ai
+# Import the main AI function and the RAG engine instance
+from ai_brain import ask_ai, rag
 
 from config import (
     GROQ_API_KEY
@@ -259,7 +261,7 @@ async def health():
         "web_search": bool(
             os.environ.get("SERPER_API_KEY", "")
         ),
-        "mode": "horizontal-ai-with-web-search"
+        "mode": "horizontal-ai-with-web-search-and-rag"
 
     }
 
@@ -689,7 +691,10 @@ async def chat_endpoint(
             filename = file.filename.lower()
             file_contents = await file.read()
 
+            # =================================================
             # PDF
+            # =================================================
+
             if (
 
                 filename.endswith(".pdf")
@@ -706,6 +711,26 @@ async def chat_endpoint(
                         "message": "No readable text found in PDF."
                     }
 
+                # =============================================
+                # SAVE TO RAG (NEW)
+                # =============================================
+                try:
+                    rag.add_document(
+                        extracted_text,
+                        metadata={
+                            "filename": file.filename,
+                            "user": session_id,
+                            "timestamp": datetime.now().isoformat()
+                        }
+                    )
+                    print(f"RAG: Document added successfully - {file.filename}")
+                except Exception as e:
+                    print(f"RAG Error: {str(e)}")
+                    # Don't break the flow; just log the error
+
+                # =============================================
+                # CONTINUE WITH REGULAR CHAT
+                # =============================================
                 user_question = (
 
                     question
@@ -758,7 +783,10 @@ async def chat_endpoint(
                     "response": response
                 }
 
+            # =================================================
             # IMAGE
+            # =================================================
+
             if (
 
                 file.content_type
@@ -809,7 +837,10 @@ async def chat_endpoint(
                     "response": image_response
                 }
 
+            # =================================================
             # UNSUPPORTED FILE
+            # =================================================
+
             return {
                 "status": "error",
                 "message": "Unsupported file type."
