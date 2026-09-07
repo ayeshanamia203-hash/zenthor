@@ -1,7 +1,7 @@
 # ============================================================
 # ZENTHOR - HORIZONTAL AI BRAIN
-# Groq + Serper Google Search
-# Smart Web Search + Automatic Model Fallback
+# Groq + Serper Google Search + RAG
+# Smart Web Search + Automatic Model Fallback + Document RAG
 # ============================================================
 
 import json
@@ -26,6 +26,14 @@ from config import (
     DEFAULT_MAX_TOKENS,
     MAX_HISTORY_MESSAGES,
 )
+
+# ============================================================
+# RAG ENGINE (New)
+# ============================================================
+from rag_engine import RAGEngine
+
+# Initialize RAG globally (creates a folder named "chroma_db" to store vectors)
+rag = RAGEngine(persist_directory="./chroma_db")
 
 
 # ============================================================
@@ -93,7 +101,7 @@ CURRENT_KEYWORDS = [
     "president",
     "prime minister",
 
-    # Bangla (functional keywords, not comments)
+    # Bangla (functional keywords)
     "আজ",
     "এখন",
     "বর্তমান",
@@ -107,11 +115,9 @@ CURRENT_KEYWORDS = [
     "বেতন",
     "সম্পদ",
     "নেট ওয়ার্থ",
-    "নেট ওয়ার্থ",
     "স্কোর",
     "র‍্যাংক",
     "র‌্যাঙ্ক",
-    "আবহাওয়া",
     "আবহাওয়া",
     "কত টাকা",
     "বর্তমানে",
@@ -132,9 +138,7 @@ def needs_web_search(question: str) -> bool:
     if not question:
         return False
 
-    text = str(
-        question
-    ).strip().lower()
+    text = str(question).strip().lower()
 
     # Explicit web/search requests
     explicit_patterns = [
@@ -150,17 +154,12 @@ def needs_web_search(question: str) -> bool:
         r"গুগলে",
         r"সার্চ",
         r"ওয়েবে",
-        r"ওয়েবে",
         r"ইন্টারনেটে",
 
     ]
 
     for pattern in explicit_patterns:
-        if re.search(
-            pattern,
-            text,
-            flags=re.IGNORECASE
-        ):
+        if re.search(pattern, text, flags=re.IGNORECASE):
             return True
 
     # Current-information keywords
@@ -184,11 +183,7 @@ def needs_web_search(question: str) -> bool:
     ]
 
     for pattern in dynamic_patterns:
-        if re.search(
-            pattern,
-            text,
-            flags=re.IGNORECASE
-        ):
+        if re.search(pattern, text, flags=re.IGNORECASE):
             return True
 
     return False
@@ -198,9 +193,7 @@ def needs_web_search(question: str) -> bool:
 # SERPER GOOGLE SEARCH
 # ============================================================
 
-def google_search(
-    query: str
-) -> Optional[dict]:
+def google_search(query: str) -> Optional[dict]:
     """
     Search Google through Serper API.
     Returns parsed search results.
@@ -209,80 +202,50 @@ def google_search(
     if not SERPER_API_KEY:
         return None
 
-    query = (
-        query or ""
-    ).strip()
+    query = (query or "").strip()
 
     if not query:
         return None
 
     payload = {
-
         "q": query,
         "gl": SERPER_COUNTRY,
         "hl": SERPER_LANGUAGE,
         "num": SERPER_RESULTS,
-
     }
 
-    data = json.dumps(
-        payload
-    ).encode(
-        "utf-8"
-    )
+    data = json.dumps(payload).encode("utf-8")
 
     request = urllib.request.Request(
-
         SERPER_ENDPOINT,
         data=data,
         method="POST",
-
         headers={
             "X-API-KEY": SERPER_API_KEY,
             "Content-Type": "application/json",
         }
-
     )
 
     try:
 
-        with urllib.request.urlopen(
-            request,
-            timeout=10
-        ) as response:
-
+        with urllib.request.urlopen(request, timeout=10) as response:
             raw = response.read()
-            result = json.loads(
-                raw.decode("utf-8")
-            )
+            result = json.loads(raw.decode("utf-8"))
             return result
 
     except urllib.error.HTTPError as e:
 
         try:
-            error_body = (
-                e.read()
-                .decode(
-                    "utf-8",
-                    errors="ignore"
-                )
-            )
+            error_body = e.read().decode("utf-8", errors="ignore")
         except Exception:
             error_body = ""
 
-        print(
-            "SERPER HTTP ERROR:",
-            e.code,
-            error_body
-        )
+        print("SERPER HTTP ERROR:", e.code, error_body)
         return None
 
     except Exception as e:
 
-        print(
-            "SERPER SEARCH ERROR:",
-            str(e)
-        )
+        print("SERPER SEARCH ERROR:", str(e))
         return None
 
 
@@ -290,9 +253,7 @@ def google_search(
 # FORMAT SEARCH RESULTS
 # ============================================================
 
-def format_search_results(
-    search_data: dict
-) -> str:
+def format_search_results(search_data: dict) -> str:
     """
     Convert Serper results into compact context for Groq.
     """
@@ -303,10 +264,7 @@ def format_search_results(
     parts = []
 
     # Knowledge Graph
-    knowledge = (
-        search_data.get("knowledgeGraph")
-        or {}
-    )
+    knowledge = search_data.get("knowledgeGraph") or {}
 
     if knowledge:
 
@@ -325,36 +283,21 @@ def format_search_results(
 
         for key, value in knowledge.items():
 
-            if key in [
-                "title",
-                "description",
-                "type",
-                "imageUrl",
-                "website"
-            ]:
+            if key in ["title", "description", "type", "imageUrl", "website"]:
                 continue
 
             if isinstance(value, str):
                 kg_lines.append(f"{key}: {value}")
 
         if kg_lines:
-            parts.append(
-                "KNOWLEDGE GRAPH:\n"
-                + "\n".join(kg_lines)
-            )
+            parts.append("KNOWLEDGE GRAPH:\n" + "\n".join(kg_lines))
 
     # Organic Search Results
-    organic = (
-        search_data.get("organic")
-        or []
-    )
+    organic = search_data.get("organic") or []
 
     result_lines = []
 
-    for index, item in enumerate(
-        organic[:SERPER_RESULTS],
-        start=1
-    ):
+    for index, item in enumerate(organic[:SERPER_RESULTS], start=1):
 
         title = item.get("title") or ""
         snippet = item.get("snippet") or ""
@@ -373,40 +316,25 @@ def format_search_results(
         result_lines.append(line)
 
     if result_lines:
-        parts.append(
-            "GOOGLE SEARCH RESULTS:\n"
-            + "\n\n".join(result_lines)
-        )
+        parts.append("GOOGLE SEARCH RESULTS:\n" + "\n\n".join(result_lines))
 
     # Answer Box
-    answer_box = (
-        search_data.get("answerBox")
-        or {}
-    )
+    answer_box = search_data.get("answerBox") or {}
 
     if answer_box:
 
         answer_parts = []
 
-        for key in [
-            "title",
-            "answer",
-            "snippet"
-        ]:
+        for key in ["title", "answer", "snippet"]:
 
             value = answer_box.get(key)
             if value:
                 answer_parts.append(f"{key}: {value}")
 
         if answer_parts:
-            parts.append(
-                "GOOGLE ANSWER BOX:\n"
-                + "\n".join(answer_parts)
-            )
+            parts.append("GOOGLE ANSWER BOX:\n" + "\n".join(answer_parts))
 
-    return (
-        "\n\n".join(parts).strip()
-    )
+    return "\n\n".join(parts).strip()
 
 
 # ============================================================
@@ -439,10 +367,7 @@ def get_available_models():
 
     except Exception as e:
 
-        print(
-            "MODEL LIST ERROR:",
-            str(e)
-        )
+        print("MODEL LIST ERROR:", str(e))
         return []
 
 
@@ -471,13 +396,7 @@ def choose_models():
 
         for model_name in preferred:
 
-            if (
-                model_name
-                and
-                model_name in available
-                and
-                model_name not in result
-            ):
+            if model_name and model_name in available and model_name not in result:
                 result.append(model_name)
 
         for model_name in available:
@@ -489,11 +408,7 @@ def choose_models():
 
         for model_name in preferred:
 
-            if (
-                model_name
-                and
-                model_name not in result
-            ):
+            if model_name and model_name not in result:
                 result.append(model_name)
 
     return result
@@ -533,14 +448,9 @@ def clean_response(text):
 # BUILD SYSTEM PROMPT
 # ============================================================
 
-def build_system_prompt(
-    web_context: str = ""
-):
+def build_system_prompt(web_context: str = ""):
 
-    prompt = str(
-        SYSTEM_PROMPT
-        or ""
-    ).strip()
+    prompt = str(SYSTEM_PROMPT or "").strip()
 
     if web_context:
 
@@ -609,27 +519,16 @@ def _ask_groq(messages):
 
             )
 
-            if (
-                response
-                and
-                response.choices
-            ):
+            if response and response.choices:
 
-                answer = (
-                    response
-                    .choices[0]
-                    .message
-                    .content
-                )
+                answer = response.choices[0].message.content
 
                 if answer:
                     return (answer, None)
 
         except Exception as e:
 
-            errors.append(
-                f"{model_name}: {str(e)}"
-            )
+            errors.append(f"{model_name}: {str(e)}")
             continue
 
     return (
@@ -640,31 +539,31 @@ def _ask_groq(messages):
 
 
 # ============================================================
-# MAIN AI ENGINE
+# MAIN AI ENGINE (UPDATED WITH RAG)
 # ============================================================
 
 def ask_ai(
     user_question,
     chat_history=None,
     context_text=None,
+    use_rag=True,        # New flag
 ):
+    """
+    Main AI engine with Web Search + RAG (Document Retrieval)
+    """
 
     try:
 
         if not GROQ_API_KEY:
             return "GROQ_API_KEY is not set."
 
-        final_question = (
-            str(user_question).strip()
-            if user_question
-            else ""
-        )
+        final_question = (str(user_question).strip() if user_question else "")
 
         if not final_question:
             return "Please enter a message."
 
         # ====================================================
-        # WEB SEARCH
+        # 1. WEB SEARCH (Existing)
         # ====================================================
 
         web_context = ""
@@ -687,20 +586,37 @@ def ask_ai(
                 print("WEB SEARCH FAILED")
 
         # ====================================================
-        # SYSTEM
+        # 2. RAG (NEW - Document Search)
         # ====================================================
 
-        messages = [
+        rag_context = ""
 
+        if use_rag and not context_text:
+            # Only search RAG if no explicit document is uploaded in this turn
+            # (If context_text exists, it means the user uploaded a file directly,
+            # which will be handled separately by main.py)
+            rag_docs = rag.get_context(final_question, top_k=4)
+            if rag_docs:
+                rag_context = rag_docs
+                print("RAG SEARCH SUCCESS: Found relevant documents")
+            else:
+                print("RAG SEARCH: No relevant documents found")
+
+        # ====================================================
+        # 3. BUILD SYSTEM PROMPT
+        # ====================================================
+
+        system_prompt = build_system_prompt(web_context)
+
+        messages = [
             {
                 "role": "system",
-                "content": build_system_prompt(web_context)
+                "content": system_prompt
             }
-
         ]
 
         # ====================================================
-        # HISTORY
+        # 4. CHAT HISTORY
         # ====================================================
 
         if chat_history:
@@ -727,12 +643,17 @@ def ask_ai(
                 })
 
         # ====================================================
-        # DOCUMENT CONTEXT
+        # 5. BUILD USER QUERY (Merging Contexts)
         # ====================================================
 
-        if context_text:
+        # Priority: Direct context (PDF upload) > RAG > Web Search
+        # But we can combine RAG and Web Search if both exist.
 
-            final_question = f"""
+        final_prompt = final_question
+
+        if context_text:
+            # If user uploaded a document directly (via main.py), use that as primary context
+            final_prompt = f"""
 The user provided the following document context.
 
 ---------------- DOCUMENT ----------------
@@ -740,38 +661,43 @@ The user provided the following document context.
 -------------- END DOCUMENT --------------
 
 User's request:
+{final_question}
+"""
+        elif rag_context:
+            # If no direct document, but RAG found something
+            final_prompt = f"""
+The following information was retrieved from the user's previously uploaded documents.
 
+---------------- DOCUMENT CONTEXT ----------------
+{rag_context}
+-------------- END DOCUMENT CONTEXT --------------
+
+User's request:
 {final_question}
 """
 
+        # If web search is active, we already have it in the system prompt.
+        # No need to merge it here.
+
         # ====================================================
-        # CURRENT USER MESSAGE
+        # 6. SEND TO GROQ
         # ====================================================
 
         messages.append({
             "role": "user",
-            "content": final_question
+            "content": final_prompt
         })
-
-        # ====================================================
-        # GROQ
-        # ====================================================
 
         answer, error = _ask_groq(messages)
 
         if error:
-            return (
-                "Zenthor could not respond. "
-                f"Error: {error}"
-            )
+            return f"Zenthor could not respond. Error: {error}"
 
         return clean_response(answer)
 
     except Exception as e:
 
-        return (
-            f"An error occurred in Zenthor: {str(e)}"
-        )
+        return f"An error occurred in Zenthor: {str(e)}"
 
 
 # ============================================================
