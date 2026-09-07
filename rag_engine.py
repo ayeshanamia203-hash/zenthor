@@ -1,174 +1,113 @@
 # ============================================================
-# RAG ENGINE FOR ZENTHOR (In-Memory Mode for Render)
+# RAG ENGINE - LIGHTWEIGHT FALLBACK FOR RENDER
+# No chromadb / sentence-transformers required
+# Uses simple keyword matching for document retrieval
 # ============================================================
 
 import uuid
 from typing import List, Optional
 
-try:
-    import chromadb
-    from chromadb.utils import embedding_functions
-    CHROMADB_AVAILABLE = True
-except ImportError:
-    CHROMADB_AVAILABLE = False
-    print("chromadb not installed — RAG will use simple fallback.")
 
 class RAGEngine:
+    """
+    A lightweight in-memory RAG engine that stores documents
+    and retrieves them using simple keyword matching.
+    Perfect for Render's free tier (low memory usage).
+    """
+
     def __init__(self, persist_directory: Optional[str] = None):
         """
-        Initialize RAG with optional persistence.
-        If persist_directory is None, uses in-memory.
+        Initialize the RAG engine.
+        The persist_directory parameter is kept for compatibility
+        but not used (in-memory only).
         """
-        self.persist_directory = persist_directory
-        self.collection = None
-        self._init_collection()
+        self._documents = []
+        print("RAG Engine initialized (lightweight fallback mode).")
 
-    def _init_collection(self):
-        """Initialize ChromaDB collection (in-memory or persistent)."""
-        if not CHROMADB_AVAILABLE:
-            # Simple fallback: store documents in memory as a list
-            self._documents = []
-            self._fallback_mode = True
-            return
+    def add_document(self, text: str, metadata: dict = None) -> Optional[str]:
+        """
+        Add a document to the in-memory store.
 
-        try:
-            # Use in-memory client if persist_directory is None
-            if self.persist_directory is None:
-                self.client = chromadb.Client()
-            else:
-                self.client = chromadb.PersistentClient(
-                    path=self.persist_directory
-                )
+        Args:
+            text: The document content.
+            metadata: Optional metadata (filename, user, etc.)
 
-            # Use SentenceTransformer embedding
-            embedding_fn = embedding_functions.SentenceTransformerEmbeddingFunction(
-                model_name="all-MiniLM-L6-v2"
-            )
-
-            # Get or create collection
-            self.collection = self.client.get_or_create_collection(
-                name="zenthor_docs",
-                embedding_function=embedding_fn
-            )
-            self._fallback_mode = False
-            print("ChromaDB initialized successfully.")
-
-        except Exception as e:
-            print(f"ChromaDB init failed: {str(e)} — using fallback.")
-            self._documents = []
-            self._fallback_mode = True
-
-    def add_document(self, text: str, metadata: dict = None):
-        """Add document to the vector store."""
+        Returns:
+            A unique document ID, or None if text is invalid.
+        """
         if not text or len(text.strip()) < 10:
             return None
 
-        # Fallback mode: just store in list
-        if self._fallback_mode:
-            doc_id = str(uuid.uuid4())
-            self._documents.append({
-                "id": doc_id,
-                "text": text,
-                "metadata": metadata or {}
-            })
-            return doc_id
-
-        # ChromaDB mode
-        try:
-            doc_id = str(uuid.uuid4())
-            chunks = self._chunk_text(text, chunk_size=500)
-
-            for i, chunk in enumerate(chunks):
-                self.collection.add(
-                    documents=[chunk],
-                    metadatas=[metadata or {}],
-                    ids=[f"{doc_id}_{i}"]
-                )
-
-            return doc_id
-
-        except Exception as e:
-            print(f"RAG add_document error: {str(e)}")
-            return None
-
-    def _chunk_text(self, text: str, chunk_size: int = 500):
-        """Split text into overlapping chunks."""
-        words = text.split()
-        chunks = []
-        current_chunk = []
-        current_length = 0
-
-        for word in words:
-            if current_length + len(word) > chunk_size:
-                chunks.append(" ".join(current_chunk))
-                current_chunk = [word]
-                current_length = len(word)
-            else:
-                current_chunk.append(word)
-                current_length += len(word) + 1
-
-        if current_chunk:
-            chunks.append(" ".join(current_chunk))
-
-        return chunks
+        doc_id = str(uuid.uuid4())
+        self._documents.append({
+            "id": doc_id,
+            "text": text,
+            "metadata": metadata or {}
+        })
+        print(f"RAG: Document added successfully (ID: {doc_id[:8]})")
+        return doc_id
 
     def search(self, query: str, top_k: int = 5) -> List[str]:
-        """Search for relevant documents."""
-        if not query or not query.strip():
+        """
+        Search for documents relevant to the query.
+
+        Uses simple keyword frequency matching.
+        For a production system, you would replace this with
+        proper vector search (e.g., ChromaDB, Pinecone).
+
+        Args:
+            query: The search query.
+            top_k: Number of top results to return.
+
+        Returns:
+            List of document texts.
+        """
+        if not query or not self._documents:
             return []
 
-        # Fallback mode: simple keyword search
-        if self._fallback_mode:
-            if not self._documents:
-                return []
+        # Simple keyword matching
+        query_words = set(query.lower().split())
+        results = []
 
-            # Simple keyword matching
-            query_words = set(query.lower().split())
-            results = []
+        for doc in self._documents:
+            text_lower = doc["text"].lower()
+            # Count how many query words appear in the document
+            score = sum(1 for word in query_words if word in text_lower)
+            results.append((score, doc["text"]))
 
-            for doc in self._documents:
-                text_lower = doc["text"].lower()
-                score = sum(1 for word in query_words if word in text_lower)
-                results.append((score, doc["text"]))
+        # Sort by score (highest first)
+        results.sort(key=lambda x: x[0], reverse=True)
 
-            results.sort(key=lambda x: x[0], reverse=True)
-            return [text for score, text in results[:top_k]]
-
-        # ChromaDB mode
-        try:
-            results = self.collection.query(
-                query_texts=[query],
-                n_results=top_k
-            )
-
-            documents = results.get('documents', [[]])[0]
-            return documents if documents else []
-
-        except Exception as e:
-            print(f"RAG search error: {str(e)}")
-            return []
+        # Return top_k results
+        return [text for _, text in results[:top_k]]
 
     def get_context(self, query: str, top_k: int = 5) -> str:
-        """Get combined context from relevant documents."""
+        """
+        Get combined context from relevant documents.
+
+        Args:
+            query: The search query.
+            top_k: Number of top results to combine.
+
+        Returns:
+            Combined context string, or empty string if no results.
+        """
         docs = self.search(query, top_k)
         if not docs:
             return ""
 
+        # Combine documents with a separator
         return "\n\n---\n\n".join(docs)
 
     def clear_all(self):
-        """Delete all documents."""
-        if self._fallback_mode:
-            self._documents = []
-            return
+        """
+        Delete all documents from memory.
+        """
+        self._documents = []
+        print("RAG: All documents cleared.")
 
-        try:
-            self.client.delete_collection("zenthor_docs")
-            self.collection = self.client.get_or_create_collection(
-                name="zenthor_docs",
-                embedding_function=embedding_functions.SentenceTransformerEmbeddingFunction(
-                    model_name="all-MiniLM-L6-v2"
-                )
-            )
-        except Exception as e:
-            print(f"RAG clear error: {str(e)}")
+    def get_document_count(self) -> int:
+        """
+        Get the number of stored documents.
+        """
+        return len(self._documents)
