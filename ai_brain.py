@@ -1,7 +1,6 @@
 # ============================================================
 # ZENTHOR - HORIZONTAL AI BRAIN
-# Groq + Serper Google Search + RAG
-# Smart Web Search + Automatic Model Fallback + Document RAG
+# Groq + Serper Google Search + RAG (Safe Mode)
 # ============================================================
 
 import json
@@ -28,12 +27,21 @@ from config import (
 )
 
 # ============================================================
-# RAG ENGINE (New)
+# RAG ENGINE (Safe Import with Fallback)
 # ============================================================
-from rag_engine import RAGEngine
 
-# Initialize RAG globally (creates a folder named "chroma_db" to store vectors)
-rag = RAGEngine(persist_directory="./chroma_db")
+rag = None
+RAG_AVAILABLE = False
+
+try:
+    from rag_engine import RAGEngine
+    # Use in-memory mode to avoid disk permission issues on Render
+    rag = RAGEngine(persist_directory=None)  # None = in-memory
+    RAG_AVAILABLE = True
+    print("RAG Engine loaded successfully (in-memory mode)")
+except Exception as e:
+    print(f"RAG Engine could not be loaded: {str(e)}")
+    print("Zenthor will run without RAG functionality.")
 
 
 # ============================================================
@@ -101,7 +109,7 @@ CURRENT_KEYWORDS = [
     "president",
     "prime minister",
 
-    # Bangla (functional keywords)
+    # Bangla
     "আজ",
     "এখন",
     "বর্তমান",
@@ -131,16 +139,12 @@ CURRENT_KEYWORDS = [
 # ============================================================
 
 def needs_web_search(question: str) -> bool:
-    """
-    Decide whether the question probably needs live web data.
-    """
 
     if not question:
         return False
 
     text = str(question).strip().lower()
 
-    # Explicit web/search requests
     explicit_patterns = [
 
         r"\bsearch\b",
@@ -162,12 +166,10 @@ def needs_web_search(question: str) -> bool:
         if re.search(pattern, text, flags=re.IGNORECASE):
             return True
 
-    # Current-information keywords
     for keyword in CURRENT_KEYWORDS:
         if keyword in text:
             return True
 
-    # Questions asking "currently/how much now"
     dynamic_patterns = [
 
         r"\bhow much\b.*\b(now|today|currently)\b",
@@ -194,10 +196,6 @@ def needs_web_search(question: str) -> bool:
 # ============================================================
 
 def google_search(query: str) -> Optional[dict]:
-    """
-    Search Google through Serper API.
-    Returns parsed search results.
-    """
 
     if not SERPER_API_KEY:
         return None
@@ -233,16 +231,6 @@ def google_search(query: str) -> Optional[dict]:
             result = json.loads(raw.decode("utf-8"))
             return result
 
-    except urllib.error.HTTPError as e:
-
-        try:
-            error_body = e.read().decode("utf-8", errors="ignore")
-        except Exception:
-            error_body = ""
-
-        print("SERPER HTTP ERROR:", e.code, error_body)
-        return None
-
     except Exception as e:
 
         print("SERPER SEARCH ERROR:", str(e))
@@ -254,9 +242,6 @@ def google_search(query: str) -> Optional[dict]:
 # ============================================================
 
 def format_search_results(search_data: dict) -> str:
-    """
-    Convert Serper results into compact context for Groq.
-    """
 
     if not search_data:
         return ""
@@ -292,7 +277,7 @@ def format_search_results(search_data: dict) -> str:
         if kg_lines:
             parts.append("KNOWLEDGE GRAPH:\n" + "\n".join(kg_lines))
 
-    # Organic Search Results
+    # Organic Results
     organic = search_data.get("organic") or []
 
     result_lines = []
@@ -338,7 +323,7 @@ def format_search_results(search_data: dict) -> str:
 
 
 # ============================================================
-# GET AVAILABLE GROQ MODELS
+# GET AVAILABLE MODELS
 # ============================================================
 
 def get_available_models():
@@ -425,7 +410,6 @@ def clean_response(text):
 
     text = str(text).strip()
 
-    # Remove thinking tags.
     text = re.sub(
         r"<think>.*?</think>",
         "",
@@ -433,7 +417,6 @@ def clean_response(text):
         flags=(re.DOTALL | re.IGNORECASE)
     )
 
-    # Remove accidental assistant prefix.
     text = re.sub(
         r"^\s*(assistant|zenthor)\s*:\s*",
         "",
@@ -460,19 +443,15 @@ def build_system_prompt(web_context: str = ""):
 LIVE WEB CONTEXT
 ============================================================
 
-The following information was retrieved from Google Search
-through a web-search API.
+The following information was retrieved from Google Search.
 
 Use this information when answering the user's question.
 
 IMPORTANT:
 
-- Treat this as external search information.
 - Prefer recent and relevant results.
 - Do not invent unsupported details.
 - If the results conflict, explain the uncertainty.
-- Do not say that you personally browsed the web.
-- Do not dump all search results unless the user asks.
 
 ---------------- WEB RESULTS ----------------
 
@@ -539,18 +518,15 @@ def _ask_groq(messages):
 
 
 # ============================================================
-# MAIN AI ENGINE (UPDATED WITH RAG)
+# MAIN AI ENGINE (with Safe RAG)
 # ============================================================
 
 def ask_ai(
     user_question,
     chat_history=None,
     context_text=None,
-    use_rag=True,        # New flag
+    use_rag=True,
 ):
-    """
-    Main AI engine with Web Search + RAG (Document Retrieval)
-    """
 
     try:
 
@@ -563,14 +539,12 @@ def ask_ai(
             return "Please enter a message."
 
         # ====================================================
-        # 1. WEB SEARCH (Existing)
+        # 1. WEB SEARCH
         # ====================================================
 
         web_context = ""
 
-        should_search = needs_web_search(final_question)
-
-        if should_search:
+        if needs_web_search(final_question):
 
             print("WEB SEARCH:", final_question)
 
@@ -586,21 +560,29 @@ def ask_ai(
                 print("WEB SEARCH FAILED")
 
         # ====================================================
-        # 2. RAG (NEW - Document Search)
+        # 2. RAG (Safe Mode)
         # ====================================================
 
         rag_context = ""
 
-        if use_rag and not context_text:
-            # Only search RAG if no explicit document is uploaded in this turn
-            # (If context_text exists, it means the user uploaded a file directly,
-            # which will be handled separately by main.py)
-            rag_docs = rag.get_context(final_question, top_k=4)
-            if rag_docs:
-                rag_context = rag_docs
-                print("RAG SEARCH SUCCESS: Found relevant documents")
-            else:
-                print("RAG SEARCH: No relevant documents found")
+        if (
+            RAG_AVAILABLE
+            and use_rag
+            and not context_text
+            and rag is not None
+        ):
+
+            try:
+
+                rag_docs = rag.get_context(final_question, top_k=4)
+
+                if rag_docs:
+                    rag_context = rag_docs
+                    print("RAG SEARCH SUCCESS")
+
+            except Exception as e:
+
+                print(f"RAG SEARCH ERROR: {str(e)}")
 
         # ====================================================
         # 3. BUILD SYSTEM PROMPT
@@ -616,7 +598,7 @@ def ask_ai(
         ]
 
         # ====================================================
-        # 4. CHAT HISTORY
+        # 4. HISTORY
         # ====================================================
 
         if chat_history:
@@ -643,16 +625,13 @@ def ask_ai(
                 })
 
         # ====================================================
-        # 5. BUILD USER QUERY (Merging Contexts)
+        # 5. BUILD USER QUERY
         # ====================================================
-
-        # Priority: Direct context (PDF upload) > RAG > Web Search
-        # But we can combine RAG and Web Search if both exist.
 
         final_prompt = final_question
 
         if context_text:
-            # If user uploaded a document directly (via main.py), use that as primary context
+
             final_prompt = f"""
 The user provided the following document context.
 
@@ -663,8 +642,9 @@ The user provided the following document context.
 User's request:
 {final_question}
 """
+
         elif rag_context:
-            # If no direct document, but RAG found something
+
             final_prompt = f"""
 The following information was retrieved from the user's previously uploaded documents.
 
@@ -676,17 +656,14 @@ User's request:
 {final_question}
 """
 
-        # If web search is active, we already have it in the system prompt.
-        # No need to merge it here.
-
-        # ====================================================
-        # 6. SEND TO GROQ
-        # ====================================================
-
         messages.append({
             "role": "user",
             "content": final_prompt
         })
+
+        # ====================================================
+        # 6. GROQ
+        # ====================================================
 
         answer, error = _ask_groq(messages)
 
