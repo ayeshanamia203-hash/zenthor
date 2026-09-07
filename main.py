@@ -1,8 +1,7 @@
 # ============================================================
 # ZENTHOR - MAIN.PY
 # Horizontal General Purpose AI
-# Groq Text + Groq Vision + Groq Whisper + RAG
-# NO GEMINI
+# Groq Text + Groq Vision + Groq Whisper + RAG (Safe)
 # ============================================================
 
 import base64
@@ -10,7 +9,7 @@ import io
 import os
 import re
 import tempfile
-from datetime import datetime  # Added for RAG metadata
+from datetime import datetime  # ✅ এই লাইনটি অবশ্যই থাকতে হবে
 from pathlib import Path
 
 from fastapi import (
@@ -26,7 +25,7 @@ from groq import Groq
 
 import uvicorn
 
-# Import the main AI function and the RAG engine instance
+# ai_brain থেকে ask_ai এবং rag ইমপোর্ট করুন
 from ai_brain import ask_ai, rag
 
 from config import (
@@ -712,21 +711,23 @@ async def chat_endpoint(
                     }
 
                 # =============================================
-                # SAVE TO RAG (NEW)
+                # SAVE TO RAG (✅ সম্পূর্ণ সুরক্ষিত)
                 # =============================================
-                try:
-                    rag.add_document(
-                        extracted_text,
-                        metadata={
-                            "filename": file.filename,
-                            "user": session_id,
-                            "timestamp": datetime.now().isoformat()
-                        }
-                    )
-                    print(f"RAG: Document added successfully - {file.filename}")
-                except Exception as e:
-                    print(f"RAG Error: {str(e)}")
-                    # Don't break the flow; just log the error
+                if rag is not None:
+                    try:
+                        rag.add_document(
+                            extracted_text,
+                            metadata={
+                                "filename": file.filename,
+                                "user": session_id,
+                                "timestamp": datetime.now().isoformat()
+                            }
+                        )
+                        print(f"RAG: Document added successfully - {file.filename}")
+                    except Exception as e:
+                        print(f"RAG Error: {str(e)}")
+                else:
+                    print("RAG is not available. Document not stored in vector DB.")
 
                 # =============================================
                 # CONTINUE WITH REGULAR CHAT
