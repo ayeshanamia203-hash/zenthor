@@ -8,4 +8,4 @@ google-generativeai
 chromadb==0.5.0
 sentence-transformers==2.2.2
 pypdf==3.17.4
-
+numpy==1.26.4   # <-- এই লাইনটি যোগ করুন
