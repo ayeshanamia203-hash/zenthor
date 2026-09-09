@@ -281,36 +281,65 @@ body {
     justify-content:center;
     color:white;
     font-weight:bold;
-    font-size:22px;
+    font-size:28px;
     margin-bottom:15px;
 }
 .message {
     display:flex;
     gap:15px;
     margin-bottom:28px;
+    align-items:flex-start;
 }
+/* ============================================================
+   USER MESSAGE (Right Side)
+============================================================ */
+.message.user {
+    flex-direction: row-reverse;
+}
+.message.user .avatar {
+    margin-left: 0;
+    margin-right: 0;
+}
+.message.user .bubble {
+    text-align: right;
+    max-width: 88%;
+}
+/* ============================================================
+   AI MESSAGE (Left Side)
+============================================================ */
+.message.ai .bubble {
+    text-align: left;
+    max-width: 88%;
+}
+/* ============================================================
+   AVATARS (Icons only)
+============================================================ */
 .avatar {
     width:35px;
     height:35px;
+    min-width:35px;
     border-radius:50%;
     display:flex;
     justify-content:center;
     align-items:center;
     flex-shrink:0;
-    font-size:13px;
-    font-weight:bold;
+    font-size:16px;
+    color:white;
 }
 .user-avatar {
     background:#5436da;
-    color:white;
 }
 .ai-avatar {
     background:linear-gradient(135deg,#f59e0b,#d97706);
-    color:white;
 }
+.avatar i {
+    font-size:16px;
+}
+/* ============================================================
+   BUBBLE
+============================================================ */
 .bubble {
     width:100%;
-    max-width:88%;
     color:var(--bubble-text);
     font-size:16px;
     line-height:1.6;
@@ -575,7 +604,8 @@ pre {
     .chat-header {
         padding:12px 15px;
     }
-    .bubble {
+    .message.user .bubble,
+    .message.ai .bubble {
         max-width:100%;
     }
     .uploaded-img-preview {
@@ -701,7 +731,7 @@ pre {
                         class="chat-textarea"
                         rows="1"
                         placeholder="Ask anything"></textarea>
-                    <!-- MICROPHONE (Voice to Text only) -->
+                    <!-- MICROPHONE -->
                     <button
                         type="button"
                         class="mic-btn"
@@ -1007,14 +1037,14 @@ function deleteSessionFromDB(id){
     );
 }
 /* ============================================================
-   DEFAULT WELCOME
+   DEFAULT WELCOME (Updated with Robot Icon)
 ============================================================ */
 const DEFAULT_WELCOME = `
 <div
     class="welcome-screen"
     id="welcomeScreen">
     <div class="welcome-avatar">
-        AI
+        <i class="fa-solid fa-robot"></i>
     </div>
     <h2 class="fw-bold mb-2">
         Hello there!
@@ -2119,7 +2149,7 @@ function handleSend(){
         );
 }
 /* ============================================================
-   CHAT SEND
+   CHAT SEND (Updated: Removes Welcome Screen)
 ============================================================ */
 document
     .getElementById("chatForm")
@@ -2135,6 +2165,17 @@ document
             ){
                 return;
             }
+            // ================================================
+            // REMOVE WELCOME SCREEN IF EXISTS
+            // ================================================
+            const welcomeEl =
+                document.getElementById(
+                    "welcomeScreen"
+                );
+            if(welcomeEl){
+                chatBox.innerHTML = "";
+            }
+
             const sendBtn =
                 document.getElementById(
                     "sendBtn"
@@ -2198,9 +2239,9 @@ document
                 }
             }
             chatBox.innerHTML += `
-                <div class="message">
+                <div class="message user">
                     <div class="avatar user-avatar">
-                        You
+                        <i class="fa-solid fa-user"></i>
                     </div>
                     <div class="bubble">
                         ${userHTML}
@@ -2253,10 +2294,10 @@ document
                 Date.now();
             chatBox.innerHTML += `
                 <div
-                    class="message"
+                    class="message ai"
                     id="${loadingId}">
                     <div class="avatar ai-avatar">
-                        AI
+                        <i class="fa-solid fa-robot"></i>
                     </div>
                     <div class="bubble text-secondary">
                         <i class="fa-solid fa-circle-notch fa-spin me-2"></i>
