@@ -1000,10 +1000,12 @@ function startNewChat(render = true){
     mobileSidebarCheck();
 }
 /* ============================================================
-   LOAD SESSION
+   LOAD SESSION (UPDATED: NO enableInputs() HERE)
+   This preserves the previous lock state of the chat.
 ============================================================ */
 function loadSession(id){
     if(!allSessions[id]) return;
+    // 🔥 enableInputs() সরিয়ে দেওয়া হয়েছে — এখন পুরনো চ্যাটের লক স্টেট ঠিক থাকবে।
     currentSessionId = id;
     localStorage.setItem("zenthor_current_session_id", currentSessionId);
     chatBox.innerHTML = allSessions[id].html || DEFAULT_WELCOME;
