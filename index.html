@@ -263,6 +263,7 @@ body {
     max-width:900px;
     margin:0 auto;
 }
+/* Welcome Screen (Icon removed) */
 .welcome-screen {
     min-height:100%;
     display:flex;
@@ -271,69 +272,30 @@ body {
     flex-direction:column;
     text-align:center;
 }
-.welcome-avatar {
-    width:58px;
-    height:58px;
-    border-radius:50%;
-    background:linear-gradient(135deg,#f59e0b,#d97706);
-    display:flex;
-    align-items:center;
-    justify-content:center;
-    color:white;
-    font-weight:bold;
-    font-size:28px;
-    margin-bottom:15px;
+.welcome-screen h2 {
+    margin-bottom:0.5rem;
 }
+.welcome-screen .text-secondary {
+    color:var(--text-muted);
+}
+/* Message Layout - No Icons */
 .message {
     display:flex;
-    gap:15px;
     margin-bottom:28px;
-    align-items:flex-start;
+    gap:0;
 }
-/* ============================================================
-   USER MESSAGE (Right Side)
-============================================================ */
+/* User message: Right aligned */
 .message.user {
     flex-direction: row-reverse;
-}
-.message.user .avatar {
-    margin-left: 0;
-    margin-right: 0;
 }
 .message.user .bubble {
     text-align: right;
     max-width: 88%;
 }
-/* ============================================================
-   AI MESSAGE (Left Side)
-============================================================ */
+/* AI message: Left aligned */
 .message.ai .bubble {
     text-align: left;
     max-width: 88%;
-}
-/* ============================================================
-   AVATARS (Icons only)
-============================================================ */
-.avatar {
-    width:35px;
-    height:35px;
-    min-width:35px;
-    border-radius:50%;
-    display:flex;
-    justify-content:center;
-    align-items:center;
-    flex-shrink:0;
-    font-size:16px;
-    color:white;
-}
-.user-avatar {
-    background:#5436da;
-}
-.ai-avatar {
-    background:linear-gradient(135deg,#f59e0b,#d97706);
-}
-.avatar i {
-    font-size:16px;
 }
 /* ============================================================
    BUBBLE
@@ -1037,15 +999,12 @@ function deleteSessionFromDB(id){
     );
 }
 /* ============================================================
-   DEFAULT WELCOME (Updated with Robot Icon)
+   DEFAULT WELCOME (Icon removed)
 ============================================================ */
 const DEFAULT_WELCOME = `
 <div
     class="welcome-screen"
     id="welcomeScreen">
-    <div class="welcome-avatar">
-        <i class="fa-solid fa-robot"></i>
-    </div>
     <h2 class="fw-bold mb-2">
         Hello there!
     </h2>
@@ -2149,7 +2108,7 @@ function handleSend(){
         );
 }
 /* ============================================================
-   CHAT SEND (Updated: Removes Welcome Screen)
+   CHAT SEND (No Icons)
 ============================================================ */
 document
     .getElementById("chatForm")
@@ -2182,7 +2141,7 @@ document
                 );
             const messageSessionId =
                 currentSessionId;
-            /* USER MESSAGE */
+            /* USER MESSAGE (No Avatar) */
             let userHTML = "";
             if(question){
                 userHTML += `
@@ -2240,9 +2199,6 @@ document
             }
             chatBox.innerHTML += `
                 <div class="message user">
-                    <div class="avatar user-avatar">
-                        <i class="fa-solid fa-user"></i>
-                    </div>
                     <div class="bubble">
                         ${userHTML}
                     </div>
@@ -2288,7 +2244,7 @@ document
                 true;
             chatBox.scrollTop =
                 chatBox.scrollHeight;
-            /* LOADING */
+            /* LOADING (No Avatar) */
             const loadingId =
                 "loading-" +
                 Date.now();
@@ -2296,9 +2252,6 @@ document
                 <div
                     class="message ai"
                     id="${loadingId}">
-                    <div class="avatar ai-avatar">
-                        <i class="fa-solid fa-robot"></i>
-                    </div>
                     <div class="bubble text-secondary">
                         <i class="fa-solid fa-circle-notch fa-spin me-2"></i>
                         Thinking...
