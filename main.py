@@ -1,21 +1,23 @@
 # ============================================================
 # ZENTHOR - MAIN.PY
 # Horizontal General Purpose AI
-# Groq Text + Groq Vision + Groq Whisper + RAG (Safe)
+# Groq Text + Groq Vision + Groq Whisper + RAG + Daily Limits
 # ============================================================
 
 import base64
 import io
+import json
 import os
 import re
 import tempfile
-from datetime import datetime  # ✅ এই লাইনটি অবশ্যই থাকতে হবে
+from datetime import datetime, timezone
 from pathlib import Path
 
 from fastapi import (
     FastAPI,
     File,
     Form,
+    Request,  # <-- IP address er jonno
     UploadFile
 )
 
@@ -25,7 +27,66 @@ from groq import Groq
 
 import uvicorn
 
-# ai_brain থেকে ask_ai এবং rag ইমপোর্ট করুন
+# ============================================================
+# DAILY USAGE LIMIT (IP-BASED)
+# ============================================================
+
+USAGE_FILE = "usage_stats.json"
+
+def load_usage():
+    if os.path.exists(USAGE_FILE):
+        try:
+            with open(USAGE_FILE, "r") as f:
+                return json.load(f)
+        except:
+            return {}
+    return {}
+
+def save_usage(usage):
+    try:
+        with open(USAGE_FILE, "w") as f:
+            json.dump(usage, f)
+    except:
+        pass
+
+def get_today_key():
+    return datetime.now(timezone.utc).strftime("%Y-%m-%d")
+
+def check_and_increment_usage(client_ip: str, limit_type: str):
+    """
+    limit_type: 'questions' or 'files'
+    Returns: (is_allowed, current_count, max_limit, error_message)
+    """
+    today = get_today_key()
+    usage = load_usage()
+    
+    # Unique key per user per day
+    user_key = f"{client_ip}_{today}"
+    
+    if user_key not in usage:
+        usage[user_key] = {"questions": 0, "files": 0, "date": today}
+    
+    # Check limits
+    if limit_type == "questions":
+        max_limit = 25  # প্রশ্নের লিমিট
+        current = usage[user_key]["questions"]
+        if current >= max_limit:
+            return False, current, max_limit, "Daily question limit reached (25). Please try again tomorrow."
+        usage[user_key]["questions"] += 1
+    else:  # files
+        max_limit = 5   # ফাইলের লিমিট
+        current = usage[user_key]["files"]
+        if current >= max_limit:
+            return False, current, max_limit, "Daily file upload limit reached (5). Please try again tomorrow."
+        usage[user_key]["files"] += 1
+    
+    save_usage(usage)
+    return True, current + 1, max_limit, None
+
+# ============================================================
+# IMPORT AI BRAIN & RAG
+# ============================================================
+
 from ai_brain import ask_ai, rag
 
 from config import (
@@ -260,7 +321,11 @@ async def health():
         "web_search": bool(
             os.environ.get("SERPER_API_KEY", "")
         ),
-        "mode": "horizontal-ai-with-web-search-and-rag"
+        "mode": "horizontal-ai-with-web-search-and-rag",
+        "daily_limits": {
+            "questions": 25,
+            "file_uploads": 5
+        }
 
     }
 
@@ -661,13 +726,14 @@ RESPONSE STYLE:
 
 
 # ============================================================
-# MAIN CHAT API
+# MAIN CHAT API (WITH DAILY LIMITS)
 # ============================================================
 
 @app.post("/api/chat")
 
 async def chat_endpoint(
 
+    request: Request,  # <-- IP address er jonno
     question: str = Form(""),
     session_id: str = Form("default"),
     grade: str = Form(""),
@@ -682,10 +748,39 @@ async def chat_endpoint(
         history = get_session_history(session_id)
 
         # ====================================================
+        # GET CLIENT IP
+        # ====================================================
+        client_ip = request.client.host if request.client else "0.0.0.0"
+
+        # ====================================================
+        # CHECK DAILY QUESTION LIMIT (ALWAYS)
+        # ====================================================
+        is_allowed, current_q, max_q, q_error = check_and_increment_usage(client_ip, "questions")
+        if not is_allowed:
+            return {
+                "status": "error",
+                "message": q_error,
+                "used": current_q,
+                "limit": max_q
+            }
+
+        # ====================================================
         # FILE UPLOAD
         # ====================================================
 
         if file and file.filename:
+
+            # ================================================
+            # CHECK DAILY FILE LIMIT (ONLY IF FILE UPLOADED)
+            # ================================================
+            is_allowed_file, current_f, max_f, f_error = check_and_increment_usage(client_ip, "files")
+            if not is_allowed_file:
+                return {
+                    "status": "error",
+                    "message": f_error,
+                    "used": current_f,
+                    "limit": max_f
+                }
 
             filename = file.filename.lower()
             file_contents = await file.read()
@@ -711,7 +806,7 @@ async def chat_endpoint(
                     }
 
                 # =============================================
-                # SAVE TO RAG (✅ সম্পূর্ণ সুরক্ষিত)
+                # SAVE TO RAG (Safe Mode)
                 # =============================================
                 if rag is not None:
                     try:
