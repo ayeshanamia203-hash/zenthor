@@ -17,7 +17,7 @@ from fastapi import (
     FastAPI,
     File,
     Form,
-    Request,  # <-- IP address er jonno
+    Request,
     UploadFile
 )
 
@@ -60,24 +60,22 @@ def check_and_increment_usage(client_ip: str, limit_type: str):
     today = get_today_key()
     usage = load_usage()
     
-    # Unique key per user per day
     user_key = f"{client_ip}_{today}"
     
     if user_key not in usage:
         usage[user_key] = {"questions": 0, "files": 0, "date": today}
     
-    # Check limits
     if limit_type == "questions":
-        max_limit = 25  # প্রশ্নের লিমিট
+        max_limit = 25
         current = usage[user_key]["questions"]
         if current >= max_limit:
-            return False, current, max_limit, "Daily question limit reached (25). Please try again tomorrow."
+            return False, current, max_limit, "🙅‍♂️ You've reached the daily limit of 25 questions. It resets at 00:00 UTC (6:00 AM Bangladesh time). Please try again tomorrow."
         usage[user_key]["questions"] += 1
     else:  # files
-        max_limit = 5   # ফাইলের লিমিট
+        max_limit = 5
         current = usage[user_key]["files"]
         if current >= max_limit:
-            return False, current, max_limit, "Daily file upload limit reached (5). Please try again tomorrow."
+            return False, current, max_limit, "📄 You've reached the daily limit of 5 file uploads. It resets at 00:00 UTC (6:00 AM Bangladesh time). Please try again tomorrow."
         usage[user_key]["files"] += 1
     
     save_usage(usage)
@@ -733,7 +731,7 @@ RESPONSE STYLE:
 
 async def chat_endpoint(
 
-    request: Request,  # <-- IP address er jonno
+    request: Request,
     question: str = Form(""),
     session_id: str = Form("default"),
     grade: str = Form(""),
@@ -761,7 +759,8 @@ async def chat_endpoint(
                 "status": "error",
                 "message": q_error,
                 "used": current_q,
-                "limit": max_q
+                "limit": max_q,
+                "is_limit_error": True
             }
 
         # ====================================================
@@ -771,7 +770,7 @@ async def chat_endpoint(
         if file and file.filename:
 
             # ================================================
-            # CHECK DAILY FILE LIMIT (ONLY IF FILE UPLOADED)
+            # CHECK DAILY FILE LIMIT
             # ================================================
             is_allowed_file, current_f, max_f, f_error = check_and_increment_usage(client_ip, "files")
             if not is_allowed_file:
@@ -779,7 +778,8 @@ async def chat_endpoint(
                     "status": "error",
                     "message": f_error,
                     "used": current_f,
-                    "limit": max_f
+                    "limit": max_f,
+                    "is_limit_error": True
                 }
 
             filename = file.filename.lower()
@@ -805,9 +805,6 @@ async def chat_endpoint(
                         "message": "No readable text found in PDF."
                     }
 
-                # =============================================
-                # SAVE TO RAG (Safe Mode)
-                # =============================================
                 if rag is not None:
                     try:
                         rag.add_document(
@@ -824,9 +821,6 @@ async def chat_endpoint(
                 else:
                     print("RAG is not available. Document not stored in vector DB.")
 
-                # =============================================
-                # CONTINUE WITH REGULAR CHAT
-                # =============================================
                 user_question = (
 
                     question
@@ -932,10 +926,6 @@ async def chat_endpoint(
                     "question": user_question,
                     "response": image_response
                 }
-
-            # =================================================
-            # UNSUPPORTED FILE
-            # =================================================
 
             return {
                 "status": "error",
