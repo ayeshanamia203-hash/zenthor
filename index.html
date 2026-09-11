@@ -963,31 +963,44 @@ function processCodeBlocks(element){
     });
 }
 /* ============================================================
-   INPUT ENABLE/DISABLE (LIMIT HANDLING)
+   INPUT ENABLE/DISABLE (LIMIT HANDLING - WITH SAVED STATE)
 ============================================================ */
 function disableInputs() {
     document.getElementById("sendBtn").disabled = true;
     document.getElementById("question").disabled = true;
     document.getElementById("question").placeholder = "⏳ Limit reached. Come back tomorrow!";
     document.getElementById("sendBtn").innerHTML = '<i class="fa-solid fa-lock"></i>';
+    
+    // 🔥 Save locked state to current session
+    if (allSessions[currentSessionId]) {
+        allSessions[currentSessionId].locked = true;
+        saveSession(allSessions[currentSessionId]);
+    }
 }
 function enableInputs() {
     document.getElementById("sendBtn").disabled = false;
     document.getElementById("question").disabled = false;
     document.getElementById("question").placeholder = "Ask anything";
     document.getElementById("sendBtn").innerHTML = '<i class="fa-solid fa-arrow-up"></i>';
+    
+    // 🔥 Save unlocked state to current session
+    if (allSessions[currentSessionId]) {
+        allSessions[currentSessionId].locked = false;
+        saveSession(allSessions[currentSessionId]);
+    }
 }
 /* ============================================================
    NEW CHAT
 ============================================================ */
 function startNewChat(render = true){
-    enableInputs(); // Enable inputs for new chat
+    // Remove direct enableInputs() call; loadSession will handle it based on the flag
     currentSessionId = "session_" + Date.now() + "_" + Math.random().toString(36).substring(2,9);
     allSessions[currentSessionId] = {
         id: currentSessionId,
         title: "New Chat",
         html: DEFAULT_WELCOME,
         isPinned: false,
+        locked: false, // 🔥 New chat is always unlocked
         createdAt: Date.now(),
         updatedAt: Date.now()
     };
@@ -1000,15 +1013,22 @@ function startNewChat(render = true){
     mobileSidebarCheck();
 }
 /* ============================================================
-   LOAD SESSION (UPDATED: NO enableInputs() HERE)
-   This preserves the previous lock state of the chat.
+   LOAD SESSION (UPDATED: Checks the locked state per chat)
 ============================================================ */
 function loadSession(id){
     if(!allSessions[id]) return;
-    // 🔥 enableInputs() সরিয়ে দেওয়া হয়েছে — এখন পুরনো চ্যাটের লক স্টেট ঠিক থাকবে।
+    
     currentSessionId = id;
     localStorage.setItem("zenthor_current_session_id", currentSessionId);
     chatBox.innerHTML = allSessions[id].html || DEFAULT_WELCOME;
+    
+    // 🔥 Check if this specific chat is locked
+    if (allSessions[id].locked) {
+        disableInputs();
+    } else {
+        enableInputs();
+    }
+    
     chatBox.querySelectorAll(".bubble").forEach(function(bubble){
         renderMath(bubble);
         processCodeBlocks(bubble);
@@ -1373,7 +1393,7 @@ document.getElementById("chatForm").addEventListener("submit", async function(e)
                             <small style="font-size: 12px; opacity: 0.8;">🔄 Resets at 00:00 UTC (6:00 AM Bangladesh time)</small>
                         </div>
                     `;
-                    // Lock inputs
+                    // Lock inputs (this will also save the locked state to the session)
                     disableInputs();
                 } else {
                     // Normal error
