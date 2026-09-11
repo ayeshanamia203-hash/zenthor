@@ -908,6 +908,36 @@ function escapeHTML(text){
     div.innerText = text || "";
     return div.innerHTML;
 }
+/* ============================================================
+   DYNAMIC LOCAL RESET TIME (Global Timezone Support)
+============================================================ */
+function getLocalResetTime() {
+    // Server resets at 00:00 UTC daily.
+    // Show this UTC moment in the user's local timezone.
+    const now = new Date();
+    const utcReset = new Date(Date.UTC(
+        now.getUTCFullYear(),
+        now.getUTCMonth(),
+        now.getUTCDate() + 1,
+        0, 0, 0
+    ));
+
+    // Format in user's local time
+    const timeStr = utcReset.toLocaleString(undefined, {
+        hour: '2-digit',
+        minute: '2-digit',
+        hour12: true
+    });
+
+    // Check if reset happens today or tomorrow in user's local time
+    const localToday = new Date();
+    const localResetDay = utcReset.getDate();
+    const localTodayDay = localToday.getDate();
+    const dayLabel = (localResetDay === localTodayDay) ? "today" : "tomorrow";
+
+    return `${timeStr} ${dayLabel}`;
+}
+
 function renderMath(element){
     if(window.renderMathInElement){
         try{
@@ -971,7 +1001,6 @@ function disableInputs() {
     document.getElementById("question").placeholder = "⏳ Limit reached. Come back tomorrow!";
     document.getElementById("sendBtn").innerHTML = '<i class="fa-solid fa-lock"></i>';
     
-    // 🔥 Save locked state to current session
     if (allSessions[currentSessionId]) {
         allSessions[currentSessionId].locked = true;
         saveSession(allSessions[currentSessionId]);
@@ -983,7 +1012,6 @@ function enableInputs() {
     document.getElementById("question").placeholder = "Ask anything";
     document.getElementById("sendBtn").innerHTML = '<i class="fa-solid fa-arrow-up"></i>';
     
-    // 🔥 Save unlocked state to current session
     if (allSessions[currentSessionId]) {
         allSessions[currentSessionId].locked = false;
         saveSession(allSessions[currentSessionId]);
@@ -993,14 +1021,13 @@ function enableInputs() {
    NEW CHAT
 ============================================================ */
 function startNewChat(render = true){
-    // Remove direct enableInputs() call; loadSession will handle it based on the flag
     currentSessionId = "session_" + Date.now() + "_" + Math.random().toString(36).substring(2,9);
     allSessions[currentSessionId] = {
         id: currentSessionId,
         title: "New Chat",
         html: DEFAULT_WELCOME,
         isPinned: false,
-        locked: false, // 🔥 New chat is always unlocked
+        locked: false,
         createdAt: Date.now(),
         updatedAt: Date.now()
     };
@@ -1013,7 +1040,7 @@ function startNewChat(render = true){
     mobileSidebarCheck();
 }
 /* ============================================================
-   LOAD SESSION (UPDATED: Checks the locked state per chat)
+   LOAD SESSION (Checks the locked state per chat)
 ============================================================ */
 function loadSession(id){
     if(!allSessions[id]) return;
@@ -1022,7 +1049,6 @@ function loadSession(id){
     localStorage.setItem("zenthor_current_session_id", currentSessionId);
     chatBox.innerHTML = allSessions[id].html || DEFAULT_WELCOME;
     
-    // 🔥 Check if this specific chat is locked
     if (allSessions[id].locked) {
         disableInputs();
     } else {
@@ -1301,7 +1327,7 @@ function handleSend(){
     document.getElementById("chatForm").dispatchEvent(new Event("submit"));
 }
 /* ============================================================
-   CHAT SEND (With Limit UI)
+   CHAT SEND (With Dynamic Timezone Limit UI)
 ============================================================ */
 document.getElementById("chatForm").addEventListener("submit", async function(e){
     e.preventDefault();
@@ -1382,7 +1408,7 @@ document.getElementById("chatForm").addEventListener("submit", async function(e)
                 // Check if it's a limit error
                 const isLimitError = data.is_limit_error === true || (data.message && (data.message.includes("limit") || data.message.includes("reached")));
                 if(isLimitError){
-                    // Beautiful ChatGPT-style limit box
+                    // 🌍 Global Dynamic Timezone Limit Box
                     bubble.innerHTML = `
                         <div style="background: #fff3cd; border: 1px solid #ffc107; border-radius: 12px; padding: 16px; color: #856404; text-align: center; width: 100%;">
                             <div style="font-size: 28px; margin-bottom: 6px;">⏳</div>
@@ -1390,10 +1416,9 @@ document.getElementById("chatForm").addEventListener("submit", async function(e)
                             <p style="margin: 8px 0 4px 0; font-size: 14px;">
                                 ${escapeHTML(data.message || "You have used all your free questions for today.")}
                             </p>
-                            <small style="font-size: 12px; opacity: 0.8;">🔄 Resets at 00:00 UTC (6:00 AM Bangladesh time)</small>
+                            <small style="font-size: 12px; opacity: 0.8;">🔄 Resets at <b>${getLocalResetTime()}</b> (your local time)</small>
                         </div>
                     `;
-                    // Lock inputs (this will also save the locked state to the session)
                     disableInputs();
                 } else {
                     // Normal error
@@ -1434,7 +1459,7 @@ async function generateTitle(prompt, sessionId){
         allSessions[sessionId].updatedAt = Date.now();
         await saveSession(allSessions[sessionId]);
         renderSidebarHistory();
-    } catch(error){ console.error("Automatic title generation error:", error); }
+    } catch(error){ console.error("Automatic chat title generation error:", error); }
 }
 /* ============================================================
    ESC
