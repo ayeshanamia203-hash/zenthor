@@ -1,7 +1,7 @@
 # ============================================================
 # ZENTHOR - MAIN.PY
 # Horizontal General Purpose AI
-# Groq Text + Groq Vision + Groq Whisper + RAG + Daily Limits
+# Groq Text + Groq Whisper + OpenRouter Vision + RAG + Daily Limits
 # ============================================================
 
 import base64
@@ -24,6 +24,7 @@ from fastapi import (
 from fastapi.responses import HTMLResponse
 
 from groq import Groq
+from openai import OpenAI  # <-- NEW (OpenRouter এর জন্য)
 
 import uvicorn
 
@@ -59,12 +60,12 @@ def check_and_increment_usage(client_ip: str, limit_type: str):
     """
     today = get_today_key()
     usage = load_usage()
-    
+
     user_key = f"{client_ip}_{today}"
-    
+
     if user_key not in usage:
         usage[user_key] = {"questions": 0, "files": 0, "date": today}
-    
+
     if limit_type == "questions":
         max_limit = 25
         current = usage[user_key]["questions"]
@@ -77,9 +78,10 @@ def check_and_increment_usage(client_ip: str, limit_type: str):
         if current >= max_limit:
             return False, current, max_limit, "📄 You've reached the daily limit of 5 file uploads. It resets at 00:00 UTC (6:00 AM Bangladesh time). Please try again tomorrow."
         usage[user_key]["files"] += 1
-    
+
     save_usage(usage)
     return True, current + 1, max_limit, None
+
 
 # ============================================================
 # IMPORT AI BRAIN & RAG
@@ -88,7 +90,8 @@ def check_and_increment_usage(client_ip: str, limit_type: str):
 from ai_brain import ask_ai, rag
 
 from config import (
-    GROQ_API_KEY
+    GROQ_API_KEY,
+    OPENROUTER_API_KEY
 )
 
 
@@ -106,15 +109,27 @@ app = FastAPI(
 
 
 # ============================================================
-# GROQ CLIENT
+# GROQ CLIENT (Text + Voice)
 # ============================================================
 
 groq_client = None
 
 if GROQ_API_KEY:
-
     groq_client = Groq(
         api_key=GROQ_API_KEY
+    )
+
+
+# ============================================================
+# OPENROUTER CLIENT (Vision)
+# ============================================================
+
+openrouter_client = None
+
+if OPENROUTER_API_KEY:
+    openrouter_client = OpenAI(
+        base_url="https://openrouter.ai/api/v1",
+        api_key=OPENROUTER_API_KEY,
     )
 
 
@@ -123,7 +138,7 @@ if GROQ_API_KEY:
 # ============================================================
 
 TEXT_MODEL = "openai/gpt-oss-20b"
-VISION_MODEL = "qwen/qwen3.6-27b"
+VISION_MODEL = "qwen/qwen2.5-vl-7b-instruct:free"
 WHISPER_MODEL = "whisper-large-v3"
 
 
@@ -311,6 +326,7 @@ async def health():
         "version": "6.0.0",
         "text_model": TEXT_MODEL,
         "vision_model": VISION_MODEL,
+        "vision_provider": "openrouter",
         "voice_model": WHISPER_MODEL,
         "gemini": False,
         "serper": bool(
@@ -329,7 +345,7 @@ async def health():
 
 
 # ============================================================
-# VOICE TRANSCRIPTION
+# VOICE TRANSCRIPTION (Groq Whisper)
 # ============================================================
 
 @app.post("/api/transcribe")
@@ -414,7 +430,7 @@ async def transcribe_audio(audio: UploadFile = File(...)):
 
 
 # ============================================================
-# SMART CHAT TITLE
+# SMART CHAT TITLE (Groq)
 # ============================================================
 
 @app.post("/api/generate-title")
@@ -589,7 +605,7 @@ def create_fallback_title(prompt):
 
 
 # ============================================================
-# GROQ VISION
+# VISION ANALYSIS (OpenRouter)
 # ============================================================
 
 async def analyze_image(
@@ -601,11 +617,11 @@ async def analyze_image(
 ):
 
     if (
-        not GROQ_API_KEY
-        or not groq_client
+        not OPENROUTER_API_KEY
+        or not openrouter_client
     ):
 
-        return (None, "GROQ_API_KEY missing.")
+        return (None, "OPENROUTER_API_KEY missing.")
 
     if (
         len(image_bytes)
@@ -664,7 +680,7 @@ RESPONSE STYLE:
 
         response = (
 
-            groq_client
+            openrouter_client
             .chat
             .completions
             .create(
@@ -698,7 +714,7 @@ RESPONSE STYLE:
                 ],
 
                 temperature=0.3,
-                max_completion_tokens=500,
+                max_tokens=500,
                 stream=False
 
             )
@@ -714,13 +730,13 @@ RESPONSE STYLE:
         ).strip()
 
         if not answer:
-            return (None, "Groq Vision returned an empty response.")
+            return (None, "OpenRouter Vision returned an empty response.")
 
         return (clean_ai_response(answer), None)
 
     except Exception as e:
 
-        return (None, f"Groq Vision error: {str(e)}")
+        return (None, f"OpenRouter Vision error: {str(e)}")
 
 
 # ============================================================
