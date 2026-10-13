@@ -1,6 +1,6 @@
 # ============================================================
 # ZENTHOR - HORIZONTAL AI BRAIN
-# Groq + Serper Google Search + RAG (Safe Mode)
+# OpenRouter + Serper Google Search + RAG (Safe Mode)
 # ============================================================
 
 import json
@@ -9,18 +9,18 @@ import urllib.request
 import urllib.error
 from typing import Optional
 
-from groq import Groq
+from openai import OpenAI
 
 from config import (
-    GROQ_API_KEY,
+    OPENROUTER_API_KEY,
     SERPER_API_KEY,
     SERPER_ENDPOINT,
     SERPER_RESULTS,
     SERPER_COUNTRY,
     SERPER_LANGUAGE,
     SYSTEM_PROMPT,
-    PRIMARY_GROQ_MODEL,
-    FALLBACK_GROQ_MODEL,
+    PRIMARY_MODEL,
+    FALLBACK_MODEL,
     DEFAULT_TEMPERATURE,
     DEFAULT_MAX_TOKENS,
     MAX_HISTORY_MESSAGES,
@@ -45,22 +45,16 @@ except Exception as e:
 
 
 # ============================================================
-# GROQ CLIENT
+# OPENROUTER CLIENT
 # ============================================================
 
 client = None
 
-if GROQ_API_KEY:
-    client = Groq(
-        api_key=GROQ_API_KEY
+if OPENROUTER_API_KEY:
+    client = OpenAI(
+        base_url="https://openrouter.ai/api/v1",
+        api_key=OPENROUTER_API_KEY,
     )
-
-
-# ============================================================
-# MODEL CACHE
-# ============================================================
-
-_available_models = None
 
 
 # ============================================================
@@ -323,83 +317,6 @@ def format_search_results(search_data: dict) -> str:
 
 
 # ============================================================
-# GET AVAILABLE MODELS
-# ============================================================
-
-def get_available_models():
-
-    global _available_models
-
-    if _available_models is not None:
-        return _available_models
-
-    if not client:
-        return []
-
-    try:
-
-        model_list = client.models.list()
-        models = []
-
-        for model in model_list.data:
-
-            model_id = getattr(model, "id", None)
-            if model_id:
-                models.append(model_id)
-
-        _available_models = models
-        return models
-
-    except Exception as e:
-
-        print("MODEL LIST ERROR:", str(e))
-        return []
-
-
-# ============================================================
-# CHOOSE MODELS
-# ============================================================
-
-def choose_models():
-
-    available = get_available_models()
-
-    preferred = [
-
-        PRIMARY_GROQ_MODEL,
-        FALLBACK_GROQ_MODEL,
-        "openai/gpt-oss-120b",
-        "openai/gpt-oss-20b",
-        "llama-3.3-70b-versatile",
-        "llama-3.1-8b-instant",
-
-    ]
-
-    result = []
-
-    if available:
-
-        for model_name in preferred:
-
-            if model_name and model_name in available and model_name not in result:
-                result.append(model_name)
-
-        for model_name in available:
-
-            if model_name not in result:
-                result.append(model_name)
-
-    else:
-
-        for model_name in preferred:
-
-            if model_name and model_name not in result:
-                result.append(model_name)
-
-    return result
-
-
-# ============================================================
 # CLEAN RESPONSE
 # ============================================================
 
@@ -464,18 +381,15 @@ IMPORTANT:
 
 
 # ============================================================
-# ASK GROQ
+# ASK OPENROUTER
 # ============================================================
 
-def _ask_groq(messages):
+def _ask_openrouter(messages):
 
     if not client:
-        return (None, "GROQ_API_KEY is not set.")
+        return (None, "OPENROUTER_API_KEY is not set.")
 
-    models_to_try = choose_models()
-
-    if not models_to_try:
-        return (None, "No available Groq model found.")
+    models_to_try = [PRIMARY_MODEL, FALLBACK_MODEL]
 
     errors = []
 
@@ -495,7 +409,6 @@ def _ask_groq(messages):
                     max_tokens=DEFAULT_MAX_TOKENS,
 
                 )
-
             )
 
             if response and response.choices:
@@ -512,7 +425,7 @@ def _ask_groq(messages):
 
     return (
         None,
-        "Could not get response from Groq models.\n"
+        "Could not get response from OpenRouter models.\n"
         + "\n".join(errors[-3:])
     )
 
@@ -530,8 +443,8 @@ def ask_ai(
 
     try:
 
-        if not GROQ_API_KEY:
-            return "GROQ_API_KEY is not set."
+        if not OPENROUTER_API_KEY:
+            return "OPENROUTER_API_KEY is not set."
 
         final_question = (str(user_question).strip() if user_question else "")
 
@@ -662,10 +575,10 @@ User's request:
         })
 
         # ====================================================
-        # 6. GROQ
+        # 6. OPENROUTER
         # ====================================================
 
-        answer, error = _ask_groq(messages)
+        answer, error = _ask_openrouter(messages)
 
         if error:
             return f"Zenthor could not respond. Error: {error}"
@@ -742,14 +655,3 @@ def ask_ai_tutor(
         ),
 
     )
-
-
-# ============================================================
-# REFRESH MODELS
-# ============================================================
-
-def refresh_models():
-
-    global _available_models
-    _available_models = None
-    return get_available_models()
