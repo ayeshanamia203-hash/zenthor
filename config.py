@@ -1,7 +1,7 @@
 # ============================================================
 # ZENTHOR - CONFIGURATION
 # Horizontal General-Purpose AI
-# Groq + Serper Google Search
+# Groq (Text + Voice) + OpenRouter (Vision) + Serper Search
 # ============================================================
 
 import os
@@ -13,6 +13,11 @@ import os
 
 GROQ_API_KEY = os.environ.get(
     "GROQ_API_KEY",
+    ""
+)
+
+OPENROUTER_API_KEY = os.environ.get(
+    "OPENROUTER_API_KEY",
     ""
 )
 
@@ -217,12 +222,19 @@ chain-of-thought.
 
 
 # ============================================================
-# GROQ MODELS
+# GROQ MODELS (Text + Voice)
 # ============================================================
 
 PRIMARY_GROQ_MODEL = "openai/gpt-oss-120b"
 
 FALLBACK_GROQ_MODEL = "openai/gpt-oss-20b"
+
+
+# ============================================================
+# OPENROUTER MODELS (Vision)
+# ============================================================
+
+VISION_MODEL = "qwen/qwen2.5-vl-7b-instruct:free"
 
 
 # ============================================================
