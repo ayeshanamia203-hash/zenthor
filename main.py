@@ -436,7 +436,7 @@ RESPONSE STYLE:
 
         # All models failed
         print("All vision models failed. Errors:", errors)
-        return (None, "সব ভিশন মডেল এখন ব্যস্ত। একটু পরে আবার চেষ্টা করুন।")
+        return (None, "All vision models are busy right now. Please try again in a few minutes.")
 
     except Exception as e:
         return (None, f"Vision error: {str(e)}")
