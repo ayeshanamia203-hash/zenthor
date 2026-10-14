@@ -20,25 +20,13 @@
 <link
     rel="stylesheet"
     href="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.css">
-<script
-    defer
-    src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.js">
-</script>
-<script
-    defer
-    src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/contrib/auto-render.min.js">
-</script>
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.js"></script>
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/contrib/auto-render.min.js"></script>
 <!-- Markdown -->
-<script
-    src="https://cdn.jsdelivr.net/npm/marked/marked.min.js">
-</script>
+<script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
 <!-- Highlight.js -->
-<link
-    rel="stylesheet"
-    href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/styles/atom-one-dark.min.css">
-<script
-    src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/highlight.min.js">
-</script>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/styles/atom-one-dark.min.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/highlight.min.js"></script>
 <style>
 /* ============================================================
    THEME
@@ -724,8 +712,7 @@ pre {
     </div>
 </div>
 <!-- Bootstrap -->
-<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js">
-</script>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 <script>
 /* ============================================================
    VARIABLES
@@ -738,6 +725,10 @@ const questionInput = document.getElementById("question");
 const chatBox = document.getElementById("chatBox");
 const historyList = document.getElementById("historyList");
 const micBtn = document.getElementById("micBtn");
+
+/* 🔥 GLOBAL LIMIT LOCK (IP-based, not per-chat) */
+let globalLimitLocked = localStorage.getItem("zenthor_limit_locked") === "true";
+
 /* ============================================================
    DATABASE
 ============================================================ */
@@ -747,6 +738,7 @@ const STORE_NAME = "sessions";
 let db = null;
 let allSessions = {};
 let currentSessionId = localStorage.getItem("zenthor_current_session_id") || null;
+
 /* ============================================================
    OPEN DATABASE
 ============================================================ */
@@ -763,11 +755,10 @@ function openDatabase(){
             db = event.target.result;
             resolve(db);
         };
-        request.onerror = function(){
-            reject(request.error);
-        };
+        request.onerror = function(){ reject(request.error); };
     });
 }
+
 /* ============================================================
    LOAD SESSIONS
 ============================================================ */
@@ -779,16 +770,13 @@ function loadAllSessions(){
         const request = store.getAll();
         request.onsuccess = function(){
             const sessions = {};
-            (request.result || []).forEach(function(session){
-                sessions[session.id] = session;
-            });
+            (request.result || []).forEach(function(session){ sessions[session.id] = session; });
             resolve(sessions);
         };
-        request.onerror = function(){
-            reject(request.error);
-        };
+        request.onerror = function(){ reject(request.error); };
     });
 }
+
 /* ============================================================
    SAVE / DELETE SESSION
 ============================================================ */
@@ -812,6 +800,7 @@ function deleteSessionFromDB(id){
         request.onerror = function(){ reject(request.error); };
     });
 }
+
 /* ============================================================
    DEFAULT WELCOME
 ============================================================ */
@@ -822,6 +811,7 @@ const DEFAULT_WELCOME = `
     <small class="text-secondary">Ask me anything — study, coding, writing, ideas, math, science, technology and more.</small>
 </div>
 `;
+
 /* ============================================================
    THEME
 ============================================================ */
@@ -846,6 +836,7 @@ function setTheme(theme){
         text.innerText = "Light";
     }
 }
+
 /* ============================================================
    SIDEBAR
 ============================================================ */
@@ -854,11 +845,8 @@ function toggleSidebar(){
     const overlay = document.getElementById("sidebarOverlay");
     sidebar.classList.toggle("collapsed");
     if(window.innerWidth <= 768){
-        if(!sidebar.classList.contains("collapsed")){
-            overlay.classList.add("active");
-        }else{
-            overlay.classList.remove("active");
-        }
+        if(!sidebar.classList.contains("collapsed")){ overlay.classList.add("active"); }
+        else { overlay.classList.remove("active"); }
     }
 }
 function mobileSidebarCheck(){
@@ -867,12 +855,24 @@ function mobileSidebarCheck(){
         document.getElementById("sidebarOverlay").classList.remove("active");
     }
 }
+
 /* ============================================================
-   INITIALIZATION
+   INITIALIZATION (with Auto-Unlock on new day)
 ============================================================ */
 window.addEventListener("DOMContentLoaded", async function(){
     initTheme();
     mobileSidebarCheck();
+
+    // 🔥 Auto-unlock if the date changed (new day)
+    const today = new Date().toDateString();
+    const lastLockDate = localStorage.getItem("zenthor_lock_date");
+    if (lastLockDate && lastLockDate !== today) {
+        globalLimitLocked = false;
+        localStorage.setItem("zenthor_limit_locked", "false");
+        localStorage.removeItem("zenthor_lock_date");
+        console.log("🔓 Daily limit auto-reset (new day detected)");
+    }
+
     try{
         await openDatabase();
         allSessions = await loadAllSessions();
@@ -887,6 +887,7 @@ window.addEventListener("DOMContentLoaded", async function(){
         startNewChat(true);
     }
 });
+
 /* ============================================================
    TEXTAREA
 ============================================================ */
@@ -900,6 +901,7 @@ questionInput.addEventListener("keydown", function(e){
         handleSend();
     }
 });
+
 /* ============================================================
    UTILITY FUNCTIONS
 ============================================================ */
@@ -908,12 +910,11 @@ function escapeHTML(text){
     div.innerText = text || "";
     return div.innerHTML;
 }
+
 /* ============================================================
-   DYNAMIC LOCAL RESET TIME (Global Timezone Support)
+   DYNAMIC LOCAL RESET TIME
 ============================================================ */
 function getLocalResetTime() {
-    // Server resets at 00:00 UTC daily.
-    // Show this UTC moment in the user's local timezone.
     const now = new Date();
     const utcReset = new Date(Date.UTC(
         now.getUTCFullYear(),
@@ -921,20 +922,15 @@ function getLocalResetTime() {
         now.getUTCDate() + 1,
         0, 0, 0
     ));
-
-    // Format in user's local time
     const timeStr = utcReset.toLocaleString(undefined, {
         hour: '2-digit',
         minute: '2-digit',
         hour12: true
     });
-
-    // Check if reset happens today or tomorrow in user's local time
     const localToday = new Date();
     const localResetDay = utcReset.getDate();
     const localTodayDay = localToday.getDate();
     const dayLabel = (localResetDay === localTodayDay) ? "today" : "tomorrow";
-
     return `${timeStr} ${dayLabel}`;
 }
 
@@ -992,33 +988,36 @@ function processCodeBlocks(element){
         }
     });
 }
+
 /* ============================================================
-   INPUT ENABLE/DISABLE (LIMIT HANDLING - WITH SAVED STATE)
+   INPUT ENABLE/DISABLE (GLOBAL LOCK)
 ============================================================ */
 function disableInputs() {
     document.getElementById("sendBtn").disabled = true;
     document.getElementById("question").disabled = true;
     document.getElementById("question").placeholder = "⏳ Limit reached. Come back tomorrow!";
     document.getElementById("sendBtn").innerHTML = '<i class="fa-solid fa-lock"></i>';
-    
-    if (allSessions[currentSessionId]) {
-        allSessions[currentSessionId].locked = true;
-        saveSession(allSessions[currentSessionId]);
-    }
+
+    // 🔥 Save GLOBALLY
+    globalLimitLocked = true;
+    localStorage.setItem("zenthor_limit_locked", "true");
+    localStorage.setItem("zenthor_lock_date", new Date().toDateString());
 }
+
 function enableInputs() {
     document.getElementById("sendBtn").disabled = false;
     document.getElementById("question").disabled = false;
     document.getElementById("question").placeholder = "Ask anything";
     document.getElementById("sendBtn").innerHTML = '<i class="fa-solid fa-arrow-up"></i>';
-    
-    if (allSessions[currentSessionId]) {
-        allSessions[currentSessionId].locked = false;
-        saveSession(allSessions[currentSessionId]);
-    }
+
+    // 🔥 Clear GLOBAL lock
+    globalLimitLocked = false;
+    localStorage.setItem("zenthor_limit_locked", "false");
+    localStorage.removeItem("zenthor_lock_date");
 }
+
 /* ============================================================
-   NEW CHAT
+   NEW CHAT (does NOT force-unlock; global lock governs)
 ============================================================ */
 function startNewChat(render = true){
     currentSessionId = "session_" + Date.now() + "_" + Math.random().toString(36).substring(2,9);
@@ -1027,7 +1026,6 @@ function startNewChat(render = true){
         title: "New Chat",
         html: DEFAULT_WELCOME,
         isPinned: false,
-        locked: false,
         createdAt: Date.now(),
         updatedAt: Date.now()
     };
@@ -1039,22 +1037,24 @@ function startNewChat(render = true){
     }
     mobileSidebarCheck();
 }
+
 /* ============================================================
-   LOAD SESSION (Checks the locked state per chat)
+   LOAD SESSION (Uses GLOBAL lock, not per-chat)
 ============================================================ */
 function loadSession(id){
     if(!allSessions[id]) return;
-    
+
     currentSessionId = id;
     localStorage.setItem("zenthor_current_session_id", currentSessionId);
     chatBox.innerHTML = allSessions[id].html || DEFAULT_WELCOME;
-    
-    if (allSessions[id].locked) {
+
+    // 🔥 Use GLOBAL lock
+    if (globalLimitLocked) {
         disableInputs();
     } else {
         enableInputs();
     }
-    
+
     chatBox.querySelectorAll(".bubble").forEach(function(bubble){
         renderMath(bubble);
         processCodeBlocks(bubble);
@@ -1063,6 +1063,7 @@ function loadSession(id){
     renderSidebarHistory();
     mobileSidebarCheck();
 }
+
 /* ============================================================
    DELETE SESSION
 ============================================================ */
@@ -1087,6 +1088,7 @@ async function deleteSession(event, id){
     renderSidebarHistory();
     loadSession(currentSessionId);
 }
+
 /* ============================================================
    PIN / RENAME
 ============================================================ */
@@ -1109,6 +1111,7 @@ function renameSession(id){
     saveSession(allSessions[id]);
     renderSidebarHistory();
 }
+
 /* ============================================================
    SIDEBAR HISTORY
 ============================================================ */
@@ -1156,6 +1159,7 @@ function renderHistoryItem(id){
     item.addEventListener("touchmove", function(){ clearTimeout(longPressTimer); });
     historyList.appendChild(item);
 }
+
 /* ============================================================
    CONTEXT MENU
 ============================================================ */
@@ -1191,6 +1195,7 @@ function contextDelete(){
     if(contextSessionId){ deleteSession(null, contextSessionId); }
     hideContextMenu();
 }
+
 /* ============================================================
    FILE HANDLING
 ============================================================ */
@@ -1241,8 +1246,9 @@ function clearSelectedFile(){
     document.getElementById("filePreviewArea").style.display = "none";
     document.getElementById("previewImgThumb").src = "";
 }
+
 /* ============================================================
-   MICROPHONE (Voice to Text)
+   MICROPHONE
 ============================================================ */
 let mediaRecorder = null;
 let audioChunks = [];
@@ -1318,6 +1324,7 @@ async function transcribeAudio(blob){
         questionInput.placeholder = "Ask anything";
     }
 }
+
 /* ============================================================
    HANDLE SEND
 ============================================================ */
@@ -1326,22 +1333,21 @@ function handleSend(){
     if(!text && !selectedFile) return;
     document.getElementById("chatForm").dispatchEvent(new Event("submit"));
 }
+
 /* ============================================================
-   CHAT SEND (With Dynamic Timezone Limit UI)
+   CHAT SEND
 ============================================================ */
 document.getElementById("chatForm").addEventListener("submit", async function(e){
     e.preventDefault();
     const question = questionInput.value.trim();
     if(!question && !selectedFile) return;
 
-    // Remove welcome screen
     const welcomeEl = document.getElementById("welcomeScreen");
     if(welcomeEl) chatBox.innerHTML = "";
 
     const sendBtn = document.getElementById("sendBtn");
     const messageSessionId = currentSessionId;
-    
-    // Build user message HTML
+
     let userHTML = "";
     if(question){
         userHTML += `<strong>You</strong><br>${escapeHTML(question).replace(/\n/g, "<br>")}`;
@@ -1356,24 +1362,20 @@ document.getElementById("chatForm").addEventListener("submit", async function(e)
     }
     chatBox.innerHTML += `<div class="message user"><div class="bubble">${userHTML}</div></div>`;
 
-    // Form data
     const formData = new FormData();
     formData.append("question", question);
     formData.append("session_id", messageSessionId);
     if(selectedFile) formData.append("file", selectedFile);
 
-    // Title check
     const shouldGenerateTitle = allSessions[messageSessionId] && allSessions[messageSessionId].title === "New Chat";
     const titleQuestion = question || (selectedFile ? "Image or document analysis" : "");
 
-    // Clear input
     questionInput.value = "";
     questionInput.style.height = "auto";
     clearSelectedFile();
     sendBtn.disabled = true;
     chatBox.scrollTop = chatBox.scrollHeight;
 
-    // Loading
     const loadingId = "loading-" + Date.now();
     chatBox.innerHTML += `<div class="message ai" id="${loadingId}"><div class="bubble text-secondary"><i class="fa-solid fa-circle-notch fa-spin me-2"></i>Thinking...</div></div>`;
     chatBox.scrollTop = chatBox.scrollHeight;
@@ -1382,7 +1384,7 @@ document.getElementById("chatForm").addEventListener("submit", async function(e)
         const response = await fetch("/api/chat", { method:"POST", body:formData });
         const data = await response.json();
         const loading = document.getElementById(loadingId);
-        
+
         if(data.status === "success"){
             let content = data.response || "";
             try{ content = marked.parse(content); } catch(error){ content = escapeHTML(data.response).replace(/\n/g, "<br>"); }
@@ -1405,10 +1407,8 @@ document.getElementById("chatForm").addEventListener("submit", async function(e)
             if(loading){
                 const bubble = loading.querySelector(".bubble");
                 bubble.classList.remove("text-secondary");
-                // Check if it's a limit error
                 const isLimitError = data.is_limit_error === true || (data.message && (data.message.includes("limit") || data.message.includes("reached")));
                 if(isLimitError){
-                    // 🌍 Global Dynamic Timezone Limit Box
                     bubble.innerHTML = `
                         <div style="background: #fff3cd; border: 1px solid #ffc107; border-radius: 12px; padding: 16px; color: #856404; text-align: center; width: 100%;">
                             <div style="font-size: 28px; margin-bottom: 6px;">⏳</div>
@@ -1421,7 +1421,6 @@ document.getElementById("chatForm").addEventListener("submit", async function(e)
                     `;
                     disableInputs();
                 } else {
-                    // Normal error
                     bubble.innerHTML = `<span class="text-danger">Error: ${escapeHTML(data.message || "Something went wrong.")}</span>`;
                 }
             }
@@ -1437,6 +1436,7 @@ document.getElementById("chatForm").addEventListener("submit", async function(e)
         chatBox.scrollTop = chatBox.scrollHeight;
     }
 });
+
 /* ============================================================
    AI AUTOMATIC CHAT TITLE
 ============================================================ */
@@ -1461,6 +1461,7 @@ async function generateTitle(prompt, sessionId){
         renderSidebarHistory();
     } catch(error){ console.error("Automatic chat title generation error:", error); }
 }
+
 /* ============================================================
    ESC
 ============================================================ */
