@@ -130,13 +130,8 @@ TEXT_MODEL = "openai/gpt-oss-20b"
 WHISPER_MODEL = "whisper-large-v3"
 
 # 🔥 Multiple free vision models for fallback
-VISION_MODELS = [
-    "google/gemma-3-27b-it:free",
-    "qwen/qwen2.5-vl-72b-instruct:free",
-    "qwen/qwen2.5-vl-7b-instruct:free",
-    "meta-llama/llama-3.2-11b-vision-instruct:free",
-    "nvidia/nemotron-nano-12b-v2-vl:free",
-]
+VISION_MODELS = []
+
 
 
 # ============================================================
@@ -436,7 +431,7 @@ RESPONSE STYLE:
 
         # All models failed
         print("All vision models failed. Errors:", errors)
-        return (None, "All vision models are busy right now. Please try again in a few minutes.")
+        return (None, "Image analysis is temporarily unavailable. Please use text chat for now.")
 
     except Exception as e:
         return (None, f"Vision error: {str(e)}")
