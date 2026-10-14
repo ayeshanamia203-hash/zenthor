@@ -138,7 +138,7 @@ if OPENROUTER_API_KEY:
 # ============================================================
 
 TEXT_MODEL = "openai/gpt-oss-20b"
-VISION_MODEL = "nvidia/nemotron-nano-12b-v2-vl:free"
+VISION_MODEL = "openrouter/free"
 WHISPER_MODEL = "whisper-large-v3"
 
 
