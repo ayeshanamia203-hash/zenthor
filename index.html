@@ -726,7 +726,7 @@ const chatBox = document.getElementById("chatBox");
 const historyList = document.getElementById("historyList");
 const micBtn = document.getElementById("micBtn");
 
-/* 🔥 GLOBAL LIMIT LOCK (IP-based, not per-chat) */
+/* GLOBAL LIMIT LOCK (IP-based, not per-chat) */
 let globalLimitLocked = localStorage.getItem("zenthor_limit_locked") === "true";
 
 /* ============================================================
@@ -863,14 +863,14 @@ window.addEventListener("DOMContentLoaded", async function(){
     initTheme();
     mobileSidebarCheck();
 
-    // 🔥 Auto-unlock if the date changed (new day)
+    // Auto-unlock if the date changed (new day)
     const today = new Date().toDateString();
     const lastLockDate = localStorage.getItem("zenthor_lock_date");
     if (lastLockDate && lastLockDate !== today) {
         globalLimitLocked = false;
         localStorage.setItem("zenthor_limit_locked", "false");
         localStorage.removeItem("zenthor_lock_date");
-        console.log("🔓 Daily limit auto-reset (new day detected)");
+        console.log("Daily limit auto-reset (new day detected)");
     }
 
     try{
@@ -998,7 +998,7 @@ function disableInputs() {
     document.getElementById("question").placeholder = "⏳ Limit reached. Come back tomorrow!";
     document.getElementById("sendBtn").innerHTML = '<i class="fa-solid fa-lock"></i>';
 
-    // 🔥 Save GLOBALLY
+    // Save GLOBALLY
     globalLimitLocked = true;
     localStorage.setItem("zenthor_limit_locked", "true");
     localStorage.setItem("zenthor_lock_date", new Date().toDateString());
@@ -1010,14 +1010,14 @@ function enableInputs() {
     document.getElementById("question").placeholder = "Ask anything";
     document.getElementById("sendBtn").innerHTML = '<i class="fa-solid fa-arrow-up"></i>';
 
-    // 🔥 Clear GLOBAL lock
+    // Clear GLOBAL lock
     globalLimitLocked = false;
     localStorage.setItem("zenthor_limit_locked", "false");
     localStorage.removeItem("zenthor_lock_date");
 }
 
 /* ============================================================
-   NEW CHAT (does NOT force-unlock; global lock governs)
+   NEW CHAT
 ============================================================ */
 function startNewChat(render = true){
     currentSessionId = "session_" + Date.now() + "_" + Math.random().toString(36).substring(2,9);
@@ -1039,7 +1039,7 @@ function startNewChat(render = true){
 }
 
 /* ============================================================
-   LOAD SESSION (Uses GLOBAL lock, not per-chat)
+   LOAD SESSION
 ============================================================ */
 function loadSession(id){
     if(!allSessions[id]) return;
@@ -1048,7 +1048,7 @@ function loadSession(id){
     localStorage.setItem("zenthor_current_session_id", currentSessionId);
     chatBox.innerHTML = allSessions[id].html || DEFAULT_WELCOME;
 
-    // 🔥 Use GLOBAL lock
+    // Use GLOBAL lock
     if (globalLimitLocked) {
         disableInputs();
     } else {
@@ -1421,7 +1421,7 @@ document.getElementById("chatForm").addEventListener("submit", async function(e)
                     `;
                     disableInputs();
                 } else {
-                    bubble.innerHTML = <div style="color: var(--text-color);"><strong>Zenthor</strong></div><div style="color: var(--text-color);">Sorry, ${escapeHTML(data.message || "something went wrong. Please try again.")}</div>
+                    bubble.innerHTML = `<div style="color: var(--text-color);"><strong>Zenthor</strong></div><div style="color: var(--text-color);">Sorry, ${escapeHTML(data.message || "something went wrong. Please try again.")}</div>`;
                 }
             }
         }
@@ -1430,8 +1430,8 @@ document.getElementById("chatForm").addEventListener("submit", async function(e)
         const loading = document.getElementById(loadingId);
         if(loading){
             const bubble = loading.querySelector(".bubble");
-bubble.classList.remove("text-secondary");
-bubble.innerHTML = `<div style="color: var(--text-color);"><strong>Zenthor</strong></div><div style="color: var(--text-color);">Sorry, I couldn't connect to the server. Please try again in a moment.</div>`;
+            bubble.classList.remove("text-secondary");
+            bubble.innerHTML = `<div style="color: var(--text-color);"><strong>Zenthor</strong></div><div style="color: var(--text-color);">Sorry, I couldn't connect to the server. Please try again in a moment.</div>`;
         }
     } finally {
         sendBtn.disabled = false;
