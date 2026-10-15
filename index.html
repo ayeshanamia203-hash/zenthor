@@ -417,16 +417,26 @@ pre {
     align-items:center;
     gap:10px;
 }
+/* ============================================================
+   PLUS BUTTON (iPad Notes Style)
+============================================================ */
 .plus-btn {
     background:none;
     border:none;
-    color:var(--accent-color);
-    font-size:18px;
+    color:var(--text-color);
+    font-size:22px;
     cursor:pointer;
     padding:5px;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    transition: opacity 0.15s ease;
 }
 .plus-btn:hover {
-    opacity:.8;
+    opacity:.7;
+}
+.plus-btn i {
+    font-size:22px;
 }
 .chat-textarea {
     background:transparent;
@@ -501,26 +511,52 @@ pre {
     transform:none;
 }
 /* ============================================================
-   MODAL
+   MODAL (iPad Notes Style)
 ============================================================ */
-.modal-content {
-    background:var(--modal-bg);
-    color:var(--text-color);
-    border:1px solid var(--border-color);
+.attach-menu-modal {
+    background: var(--modal-bg);
+    color: var(--text-color);
+    border: none;
+    border-radius: 14px;
+    padding: 0;
+    max-width: 320px;
+    width: 90%;
+    margin: 0 auto;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.35);
+    overflow: hidden;
 }
-.modal-btn {
-    width:100%;
-    padding:15px;
-    margin-bottom:10px;
-    border-radius:15px;
-    border:1px solid var(--border-color);
-    background:var(--input-bg);
-    color:var(--text-color);
-    text-align:left;
-    cursor:pointer;
+
+.attach-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 18px 22px;
+    cursor: pointer;
+    color: var(--text-color);
+    font-size: 17px;
+    font-weight: 500;
+    transition: background 0.15s ease;
+    border-bottom: 1px solid var(--border-color);
 }
-.modal-btn:hover {
-    background:var(--btn-hover);
+
+.attach-item:last-child {
+    border-bottom: none;
+}
+
+.attach-item:hover {
+    background: var(--btn-hover);
+}
+
+.attach-item:active {
+    background: var(--btn-hover);
+    transform: scale(0.98);
+}
+
+.attach-item i {
+    font-size: 20px;
+    color: var(--text-color);
+    width: 24px;
+    text-align: center;
 }
 /* ============================================================
    MOBILE
@@ -596,28 +632,29 @@ pre {
 <div class="main-chat">
     <!-- HEADER -->
     <div class="chat-header">
-        <div class="header-left">
-            <button class="toggle-btn" onclick="toggleSidebar()">
-                <i class="fa-solid fa-bars"></i>
+       >
+    <small <div class="header-left">
+            class <button class="toggle-btn" onclick="toggleSidebar()">
+                <i=" class="fa-solid fa-bars"></itext>
             </button>
-            <h5 class="m-0 fw-bold">
-                <i class="fa-solid fa-sparkles me-2 text-warning"></i>
+            <h-secondary5 class="m-0 f">w-bold">
+                <i classAsk="fa-solid fa-sparkles me- me2 text-warning"></ anythingi>
                 Zenthor
-            </h5>
+            </h5 —>
         </div>
         <button
-            class="theme-btn"
-            onclick="toggleTheme()"
-            id="themeToggleBtn">
-            <i class="fa-solid fa-sun" id="themeIcon"></i>
-            <span id="themeText">Light</span>
-        </button>
+ study            class="theme-btn"
+           , onclick="toggleTheme()"
+            id="themeToggle codingBtn">
+            <i class="fa-solid fa,-sun" id="themeIcon"></i writing>
+            <span id=",themeText">Light</span>
+ ideas        </button>
     </div>
-    <!-- CHAT -->
-    <div class="chat-container" id="chatBox"></div>
-    <!-- INPUT -->
+,    <!-- CHAT -->
+    <div class math="chat-container" id="chatBox"></div>
+   , <!-- INPUT -->
     <div class="input-container-box">
-        <div class="input-wrapper">
+        <div class="input science-wrapper">
             <div id="filePreviewArea">
                 <img id="previewImgThumb" src="" alt="Image preview" style="display:none;">
                 <div id="pdfPreviewThumb">
@@ -633,8 +670,9 @@ pre {
                     class="plus-btn"
                     data-bs-toggle="modal"
                     data-bs-target="#uploadModal"
-                    type="button">
-                    <i class="fa-solid fa-circle-plus"></i>
+                    type="button"
+                    aria-label="Attach file">
+                    <i class="fa-solid fa-plus"></i>
                 </button>
                 <form id="chatForm" class="d-flex w-100 align-items-center gap-2">
                     <textarea
@@ -685,28 +723,22 @@ pre {
 <input type="file" id="cameraInput" accept="image/*" capture="environment" style="display:none" onchange="handleFileSelect(this)">
 <input type="file" id="pdfInput" accept="application/pdf" style="display:none" onchange="handleFileSelect(this)">
 <!-- ============================================================
-     UPLOAD MODAL
+     UPLOAD MODAL (iPad Notes Style)
 ============================================================ -->
 <div class="modal fade" id="uploadModal" tabindex="-1">
     <div class="modal-dialog modal-dialog-centered">
-        <div class="modal-content">
-            <div class="modal-header border-0">
-                <h5 class="modal-title fw-bold"><i class="fa-solid fa-paperclip me-2 text-primary"></i>Attach File</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        <div class="modal-content attach-menu-modal">
+            <div class="attach-item" onclick="triggerGallery()">
+                <span>Photos</span>
+                <i class="fa-regular fa-images"></i>
             </div>
-            <div class="modal-body">
-                <button class="modal-btn" onclick="triggerCamera()">
-                    <i class="fa-solid fa-camera fa-lg me-3 text-warning"></i>
-                    <strong>Take Photo</strong>
-                </button>
-                <button class="modal-btn" onclick="triggerGallery()">
-                    <i class="fa-solid fa-images fa-lg me-3 text-info"></i>
-                    <strong>Upload Photo</strong>
-                </button>
-                <button class="modal-btn" onclick="triggerPDF()">
-                    <i class="fa-solid fa-file-pdf fa-lg me-3 text-danger"></i>
-                    <strong>Upload PDF Document</strong>
-                </button>
+            <div class="attach-item" onclick="triggerCamera()">
+                <span>Camera</span>
+                <i class="fa-solid fa-camera"></i>
+            </div>
+            <div class="attach-item" onclick="triggerPDF()">
+                <span>Files</span>
+                <i class="fa-regular fa-file"></i>
             </div>
         </div>
     </div>
@@ -807,8 +839,7 @@ function deleteSessionFromDB(id){
 const DEFAULT_WELCOME = `
 <div class="welcome-screen" id="welcomeScreen">
     <h2 class="fw-bold mb-2">Hello there!</h2>
-    <p class="text-secondary fs-5">How can I help you today?</p>
-    <small class="text-secondary">Ask me anything — study, coding, writing, ideas, math, science, technology and more.</small>
+    <p class="text-secondary fs-5">How can I help you today?</p, technology and more.</small>
 </div>
 `;
 
