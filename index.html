@@ -632,29 +632,28 @@ pre {
 <div class="main-chat">
     <!-- HEADER -->
     <div class="chat-header">
-       >
-    <small <div class="header-left">
-            class <button class="toggle-btn" onclick="toggleSidebar()">
-                <i=" class="fa-solid fa-bars"></itext>
+        <div class="header-left">
+            <button class="toggle-btn" onclick="toggleSidebar()">
+                <i class="fa-solid fa-bars"></i>
             </button>
-            <h-secondary5 class="m-0 f">w-bold">
-                <i classAsk="fa-solid fa-sparkles me- me2 text-warning"></ anythingi>
+            <h5 class="m-0 fw-bold">
+                <i class="fa-solid fa-sparkles me-2 text-warning"></i>
                 Zenthor
-            </h5 —>
+            </h5>
         </div>
         <button
- study            class="theme-btn"
-           , onclick="toggleTheme()"
-            id="themeToggle codingBtn">
-            <i class="fa-solid fa,-sun" id="themeIcon"></i writing>
-            <span id=",themeText">Light</span>
- ideas        </button>
+            class="theme-btn"
+            onclick="toggleTheme()"
+            id="themeToggleBtn">
+            <i class="fa-solid fa-sun" id="themeIcon"></i>
+            <span id="themeText">Light</span>
+        </button>
     </div>
-,    <!-- CHAT -->
-    <div class math="chat-container" id="chatBox"></div>
-   , <!-- INPUT -->
+    <!-- CHAT -->
+    <div class="chat-container" id="chatBox"></div>
+    <!-- INPUT -->
     <div class="input-container-box">
-        <div class="input science-wrapper">
+        <div class="input-wrapper">
             <div id="filePreviewArea">
                 <img id="previewImgThumb" src="" alt="Image preview" style="display:none;">
                 <div id="pdfPreviewThumb">
@@ -839,7 +838,8 @@ function deleteSessionFromDB(id){
 const DEFAULT_WELCOME = `
 <div class="welcome-screen" id="welcomeScreen">
     <h2 class="fw-bold mb-2">Hello there!</h2>
-    <p class="text-secondary fs-5">How can I help you today?</p, technology and more.</small>
+    <p class="text-secondary fs-5">How can I help you today?</p>
+    <small class="text-secondary">Ask me anything — study, coding, writing, ideas, math, science, technology and more.</small>
 </div>
 `;
 
