@@ -1421,7 +1421,7 @@ document.getElementById("chatForm").addEventListener("submit", async function(e)
                     `;
                     disableInputs();
                 } else {
-                    bubble.innerHTML = `<span class="text-danger">Error: ${escapeHTML(data.message || "Something went wrong.")}</span>`;
+                    bubble.innerHTML = <div style="color: var(--text-color);"><strong>Zenthor</strong></div><div style="color: var(--text-color);">Sorry, ${escapeHTML(data.message || "something went wrong. Please try again.")}</div>
                 }
             }
         }
@@ -1429,7 +1429,9 @@ document.getElementById("chatForm").addEventListener("submit", async function(e)
         console.error("Chat error:", error);
         const loading = document.getElementById(loadingId);
         if(loading){
-            loading.querySelector(".bubble").innerHTML = `<span class="text-danger">Server connection error.</span>`;
+            const bubble = loading.querySelector(".bubble");
+bubble.classList.remove("text-secondary");
+bubble.innerHTML = `<div style="color: var(--text-color);"><strong>Zenthor</strong></div><div style="color: var(--text-color);">Sorry, I couldn't connect to the server. Please try again in a moment.</div>`;
         }
     } finally {
         sendBtn.disabled = false;
