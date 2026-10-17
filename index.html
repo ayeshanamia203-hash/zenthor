@@ -513,17 +513,20 @@ pre {
 /* ============================================================
    MODAL (iPad Notes Style)
 ============================================================ */
-.attach-menu-modal {
+.modal-dialog {
+    max-width: 320px; /* মেনুকে ছোট এবং iPad-এর মতো করতে */
+    margin: 1.75rem auto;
+}
+
+.modal-content.attach-menu-modal {
     background: var(--modal-bg);
     color: var(--text-color);
-    border: none;
+    border: 1px solid var(--border-color);
     border-radius: 14px;
     padding: 0;
-    max-width: 320px;
-    width: 90%;
-    margin: 0 auto;
-    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.35);
+    width: 100%;
     overflow: hidden;
+    box-shadow: 0 20px 60px rgba(0,0,0,.5);
 }
 
 .attach-item {
@@ -534,8 +537,6 @@ pre {
     cursor: pointer;
     color: var(--text-color);
     font-size: 17px;
-    font-weight: 500;
-    transition: background 0.15s ease;
     border-bottom: 1px solid var(--border-color);
 }
 
@@ -547,14 +548,8 @@ pre {
     background: var(--btn-hover);
 }
 
-.attach-item:active {
-    background: var(--btn-hover);
-    transform: scale(0.98);
-}
-
 .attach-item i {
     font-size: 20px;
-    color: var(--text-color);
     width: 24px;
     text-align: center;
 }
@@ -736,9 +731,9 @@ pre {
                 <i class="fa-solid fa-camera"></i>
             </div>
             <div class="attach-item" onclick="triggerPDF()">
-                <span>Files</span>
-                <i class="fa-regular fa-file"></i>
-            </div>
+    <span>Files</span>
+    <i class="fa-solid fa-paperclip"></i>
+</div>
         </div>
     </div>
 </div>
