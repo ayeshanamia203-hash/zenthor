@@ -511,11 +511,12 @@ pre {
     transform:none;
 }
 /* ============================================================
-   MODAL (iPad Notes Style)
+   MODAL (iPad Notes Style) - FIXED
 ============================================================ */
-.modal-dialog {
-    max-width: 320px; /* মেনুকে ছোট এবং iPad-এর মতো করতে */
-    margin: 1.75rem auto;
+#uploadModal .modal-dialog {
+    max-width: 320px !important;
+    width: 85% !important;
+    margin: 1.75rem auto !important;
 }
 
 .modal-content.attach-menu-modal {
@@ -731,9 +732,9 @@ pre {
                 <i class="fa-solid fa-camera"></i>
             </div>
             <div class="attach-item" onclick="triggerPDF()">
-    <span>Files</span>
-    <i class="fa-solid fa-paperclip"></i>
-</div>
+                <span>Files</span>
+                <i class="fa-solid fa-paperclip"></i>
+            </div>
         </div>
     </div>
 </div>
