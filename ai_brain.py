@@ -71,6 +71,11 @@ CURRENT_KEYWORDS = [
     "news", "update", "updates",
     "price", "cost", "worth", "net worth", "salary",
     "market cap", "stock price",
+    
+    # নতুন যোগ করা কীওয়ার্ডসমূহ (ভ্যালুয়েশন ও রিয়েল টাইম ডেটার জন্য)
+    "valuation", "valued at", "revenue", "funding", "raised",
+    "billion", "trillion", "million",
+    
     "score", "scores", "standings", "ranking", "rankings",
     "release date", "released", "launch", "launched",
     "weather", "forecast",
@@ -81,7 +86,7 @@ CURRENT_KEYWORDS = [
     "নতুন খবর", "খবর", "আপডেট", "দাম", "মূল্য",
     "বেতন", "সম্পদ", "নেট ওয়ার্থ", "স্কোর", "র‍্যাংক",
     "র‌্যাঙ্ক", "আবহাওয়া", "কত টাকা", "বর্তমানে",
-    "এই মুহূর্তে", "সর্বশেষ খবর",
+    "এই মুহূর্তে", "সর্বশেষ খবর", "মূল্যায়ন", "ভ্যালুয়েশন", "আয়", "রাজস্ব",
 ]
 
 
@@ -353,6 +358,7 @@ IMPORTANT:
 - Prefer recent and relevant results.
 - Do not invent unsupported details.
 - If the results conflict, explain the uncertainty.
+- ALWAYS use words like "Currently", "As of today", or "Now" when presenting this real-time data, so the user knows it is up-to-date.
 
 ---------------- WEB RESULTS ----------------
 
