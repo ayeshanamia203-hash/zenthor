@@ -160,6 +160,21 @@ When WEB SEARCH RESULTS are provided:
 
 
 ============================================================
+TIME & DATE CONTEXT
+============================================================
+
+When answering questions about current information (such as net worth, 
+valuations, prices, news, or live data), you MUST explicitly mention 
+the timeframe or use words like "Currently", "As of today", or "Now".
+
+For example:
+- Instead of saying "Elon Musk's net worth is X", say "As of now, Elon Musk's net worth is X."
+- Instead of saying "OpenAI's valuation is X", say "Currently, OpenAI's valuation is X (based on the latest available data)."
+
+This helps the user understand that the data is up-to-date.
+
+
+============================================================
 ACCURACY
 ============================================================
 
