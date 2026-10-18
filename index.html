@@ -71,12 +71,62 @@ body { display:flex; }
 }
 .sidebar.collapsed { margin-left:-260px; }
 .sidebar-overlay { display:none; position:fixed; inset:0; background:rgba(0,0,0,.5); z-index:999; }
-.new-chat-btn {
-    background:var(--input-bg); color:var(--text-color); border:1px solid var(--border-color);
-    border-radius:30px; padding:10px 15px; font-weight:500; cursor:pointer;
+
+/* New Chat & Search Row */
+.sidebar-top-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 10px;
 }
-.new-chat-btn:hover { background:var(--btn-hover); }
-.history-list { flex:1; overflow-y:auto; margin-top:15px; }
+.new-chat-btn {
+    flex: 1;
+    background: transparent;
+    color: var(--text-color);
+    border: none;
+    border-radius: 30px;
+    padding: 10px 15px;
+    font-weight: 500;
+    cursor: pointer;
+    text-align: left;
+    display: flex;
+    align-items: center;
+    transition: background 0.15s;
+}
+.new-chat-btn:hover { background: var(--btn-hover); }
+.search-btn {
+    background: transparent;
+    border: none;
+    color: var(--text-color);
+    cursor: pointer;
+    padding: 10px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background 0.15s;
+}
+.search-btn:hover { background: var(--btn-hover); }
+
+/* Search Input Container */
+#searchContainer {
+    display: none;
+    margin-bottom: 10px;
+}
+#chatSearchInput {
+    width: 100%;
+    padding: 8px 12px;
+    border-radius: 8px;
+    border: 1px solid var(--border-color);
+    background: var(--input-bg);
+    color: var(--text-color);
+    font-size: 14px;
+    outline: none;
+    transition: border-color 0.2s;
+}
+#chatSearchInput:focus { border-color: var(--accent-color); }
+
+.history-list { flex:1; overflow-y:auto; margin-top:5px; }
 .history-label { color:var(--text-muted); font-size:11px; font-weight:700; margin:15px 8px 8px; }
 .history-item {
     display:flex; align-items:center; padding:11px 12px; border-radius:10px;
@@ -86,7 +136,7 @@ body { display:flex; }
 .history-title { white-space:nowrap; overflow:hidden; text-overflow:ellipsis; width:100%; }
 .pinned-icon { color:#f59e0b; margin-left:5px; }
 /* ============================================================
-   CONTEXT MENU (Right Click)
+   CONTEXT MENU
 ============================================================ */
 .chat-context-menu {
     display:none; position:fixed; min-width:190px; background:var(--menu-bg);
@@ -161,7 +211,7 @@ pre { margin:0 !important; padding:12px !important; overflow-x:auto; }
 .input-wrapper {
     width:100%; max-width:850px; margin:0 auto; background:var(--input-bg);
     border:1px solid var(--input-border); border-radius:24px; padding:8px 15px;
-    position: relative; /* Custom Menu Position */
+    position: relative;
 }
 #filePreviewArea { display:none; position:relative; width:fit-content; margin-bottom:8px; }
 #previewImgThumb { width:70px; height:70px; object-fit:cover; border-radius:12px; }
@@ -201,12 +251,12 @@ pre { margin:0 !important; padding:12px !important; overflow-x:auto; }
 .send-btn:disabled { opacity:.55; cursor:not-allowed; transform:none; }
 
 /* ============================================================
-   CUSTOM ATTACH MENU (ChatGPT Style)
+   CUSTOM ATTACH MENU
 ============================================================ */
 .custom-attach-menu {
     display: none;
     position: absolute;
-    bottom: 100%; /* Opens directly above the input box */
+    bottom: 100%;
     left: 0;
     margin-bottom: 10px;
     background: var(--modal-bg);
@@ -260,9 +310,23 @@ pre { margin:0 !important; padding:12px !important; overflow-x:auto; }
             <i class="fa-solid fa-xmark fa-xl"></i>
         </button>
     </div>
-    <button class="new-chat-btn w-100 mb-2" onclick="startNewChat()">
-        <i class="fa-solid fa-plus me-2"></i> New Chat
-    </button>
+    
+    <!-- New Chat & Search Row -->
+    <div class="sidebar-top-row">
+        <button class="new-chat-btn" onclick="startNewChat()">
+            <i class="fa-solid fa-pen-to-square me-2"></i> New Chat
+        </button>
+        <button class="search-btn" onclick="toggleSearch()" title="Search chats">
+            <i class="fa-solid fa-magnifying-glass"></i>
+        </button>
+    </div>
+
+    <!-- Search Input (Hidden by default) -->
+    <div id="searchContainer">
+        <input type="text" id="chatSearchInput" placeholder="Search chats..." oninput="filterChats(this.value)">
+    </div>
+
+    <!-- History List -->
     <div class="history-list" id="historyList"></div>
 </div>
 <!-- ============================================================
@@ -289,7 +353,7 @@ pre { margin:0 !important; padding:12px !important; overflow-x:auto; }
     <!-- INPUT -->
     <div class="input-container-box">
         <div class="input-wrapper">
-            <!-- CUSTOM ATTACH MENU (iPad/ChatGPT Style) -->
+            <!-- CUSTOM ATTACH MENU -->
             <div class="custom-attach-menu" id="attachMenu">
                 <div class="attach-item" onclick="triggerGallery()">
                     <span>Photos</span>
@@ -316,7 +380,6 @@ pre { margin:0 !important; padding:12px !important; overflow-x:auto; }
                 </button>
             </div>
             <div class="input-row">
-                <!-- PLUS BUTTON (Opens Custom Menu) -->
                 <button class="plus-btn" type="button" onclick="toggleAttachMenu(event)" aria-label="Attach file">
                     <i class="fa-solid fa-plus"></i>
                 </button>
@@ -364,6 +427,7 @@ let selectedFile = null;
 let selectedFileDataURL = null;
 let contextSessionId = null;
 let longPressTimer = null;
+let currentSearchQuery = ""; // Search variable
 const questionInput = document.getElementById("question");
 const chatBox = document.getElementById("chatBox");
 const historyList = document.getElementById("historyList");
@@ -480,6 +544,29 @@ function mobileSidebarCheck(){
 }
 
 /* ============================================================
+   SEARCH LOGIC
+============================================================ */
+function toggleSearch() {
+    const container = document.getElementById("searchContainer");
+    const input = document.getElementById("chatSearchInput");
+    
+    if (container.style.display === "none" || container.style.display === "") {
+        container.style.display = "block";
+        input.focus();
+    } else {
+        container.style.display = "none";
+        input.value = "";
+        currentSearchQuery = "";
+        renderSidebarHistory(); // Reset list
+    }
+}
+
+function filterChats(query) {
+    currentSearchQuery = query.toLowerCase().trim();
+    renderSidebarHistory();
+}
+
+/* ============================================================
    INITIALIZATION
 ============================================================ */
 window.addEventListener("DOMContentLoaded", async function(){
@@ -516,6 +603,12 @@ window.addEventListener("DOMContentLoaded", async function(){
 questionInput.addEventListener("input", function(){
     this.style.height = "auto";
     this.style.height = Math.min(this.scrollHeight, 120) + "px";
+    
+    // Hide welcome screen on typing (ChatGPT behavior)
+    const welcomeEl = document.getElementById("welcomeScreen");
+    if(welcomeEl && this.value.length > 0) {
+        welcomeEl.style.display = "none";
+    }
 });
 questionInput.addEventListener("keydown", function(e){
     if(e.key === "Enter" && !e.shiftKey){ e.preventDefault(); handleSend(); }
@@ -670,22 +763,39 @@ function renameSession(id){
 }
 
 /* ============================================================
-   SIDEBAR HISTORY
+   SIDEBAR HISTORY (With Search Filter)
 ============================================================ */
 function renderSidebarHistory(){
     historyList.innerHTML = "";
-    const keys = Object.keys(allSessions).sort(function(a,b){ return (allSessions[b].updatedAt || 0) - (allSessions[a].updatedAt || 0); });
+    
+    // Get all keys
+    let keys = Object.keys(allSessions).sort(function(a,b){ return (allSessions[b].updatedAt || 0) - (allSessions[a].updatedAt || 0); });
+    
+    // Filter by search query
+    if (currentSearchQuery) {
+        keys = keys.filter(function(id) {
+            const title = (allSessions[id].title || "New Chat").toLowerCase();
+            return title.includes(currentSearchQuery);
+        });
+    }
+    
     const pinned = keys.filter(function(id){ return allSessions[id].isPinned; });
     const recent = keys.filter(function(id){ return !allSessions[id].isPinned; });
+    
     if(pinned.length){
         historyList.innerHTML += `<div class="history-label">PINNED</div>`;
         pinned.forEach(function(id){ renderHistoryItem(id); });
     }
     if(recent.length){
-        historyList.innerHTML += `<div class="history-label">RECENT CHATS</div>`;
+        historyList.innerHTML += `<div class="history-label">${currentSearchQuery ? 'SEARCH RESULTS' : 'RECENT CHATS'}</div>`;
         recent.forEach(function(id){ renderHistoryItem(id); });
     }
+    
+    if (keys.length === 0 && currentSearchQuery) {
+        historyList.innerHTML += `<div class="text-center text-muted small mt-3">No chats found.</div>`;
+    }
 }
+
 function renderHistoryItem(id){
     const session = allSessions[id];
     const active = id === currentSessionId ? "active" : "";
@@ -752,7 +862,6 @@ document.addEventListener("click", function(e){
     }
 });
 
-// Close menu and trigger inputs
 function triggerCamera(){ attachMenu.classList.remove("show"); document.getElementById("cameraInput").click(); }
 function triggerGallery(){ attachMenu.classList.remove("show"); document.getElementById("galleryInput").click(); }
 function triggerPDF(){ attachMenu.classList.remove("show"); document.getElementById("pdfInput").click(); }
@@ -984,7 +1093,12 @@ async function generateTitle(prompt, sessionId){
     } catch(error){}
 }
 
-document.addEventListener("keydown", function(e){ if(e.key === "Escape"){ hideContextMenu(); attachMenu.classList.remove("show"); } });
+document.addEventListener("keydown", function(e){ 
+    if(e.key === "Escape"){ 
+        hideContextMenu(); 
+        attachMenu.classList.remove("show"); 
+    } 
+});
 </script>
 </body>
 </html>
