@@ -66,49 +66,30 @@ body { display:flex; }
 ============================================================ */
 .sidebar {
     width:260px; height:100%; background:var(--sidebar-bg);
-    border-right:1px solid var(--border-color); padding:20px;
+    border-right:1px solid var(--border-color); padding:15px 15px 20px 15px;
     display:flex; flex-direction:column; flex-shrink:0; transition:all .25s ease; z-index:1000;
 }
 .sidebar.collapsed { margin-left:-260px; }
 .sidebar-overlay { display:none; position:fixed; inset:0; background:rgba(0,0,0,.5); z-index:999; }
 
-/* New Chat & Search Row */
-.sidebar-top-row {
+/* ChatGPT Style Layout */
+.sidebar-top {
     display: flex;
-    align-items: center;
-    gap: 10px;
+    justify-content: flex-end;
     margin-bottom: 10px;
 }
-.new-chat-btn {
-    flex: 1;
-    background: transparent;
-    color: var(--text-color);
-    border: none;
-    border-radius: 30px;
-    padding: 10px 15px;
-    font-weight: 500;
-    cursor: pointer;
-    text-align: left;
-    display: flex;
-    align-items: center;
-    transition: background 0.15s;
-}
-.new-chat-btn:hover { background: var(--btn-hover); }
 .search-btn {
     background: transparent;
     border: none;
     color: var(--text-color);
     cursor: pointer;
-    padding: 10px;
-    border-radius: 50%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
+    padding: 8px;
+    border-radius: 8px;
+    font-size: 16px;
     transition: background 0.15s;
 }
 .search-btn:hover { background: var(--btn-hover); }
 
-/* Search Input Container */
 #searchContainer {
     display: none;
     margin-bottom: 10px;
@@ -122,11 +103,27 @@ body { display:flex; }
     color: var(--text-color);
     font-size: 14px;
     outline: none;
-    transition: border-color 0.2s;
 }
 #chatSearchInput:focus { border-color: var(--accent-color); }
 
-.history-list { flex:1; overflow-y:auto; margin-top:5px; }
+.new-chat-btn {
+    width: 100%;
+    background: transparent;
+    color: var(--text-color);
+    border: none;
+    border-radius: 10px;
+    padding: 10px 12px;
+    font-weight: 500;
+    cursor: pointer;
+    text-align: left;
+    display: flex;
+    align-items: center;
+    transition: background 0.15s;
+    margin-bottom: 15px;
+}
+.new-chat-btn:hover { background: var(--btn-hover); }
+
+.history-list { flex:1; overflow-y:auto; }
 .history-label { color:var(--text-muted); font-size:11px; font-weight:700; margin:15px 8px 8px; }
 .history-item {
     display:flex; align-items:center; padding:11px 12px; border-radius:10px;
@@ -304,18 +301,15 @@ pre { margin:0 !important; padding:12px !important; overflow-x:auto; }
      SIDEBAR
 ============================================================ -->
 <div class="sidebar" id="sidebar">
-    <div class="d-flex justify-content-between align-items-center mb-3 d-md-none">
+    <div class="d-flex justify-content-between align-items-center mb-2 d-md-none">
         <span class="fw-bold">Menu</span>
         <button class="btn btn-sm text-secondary" onclick="toggleSidebar()">
             <i class="fa-solid fa-xmark fa-xl"></i>
         </button>
     </div>
     
-    <!-- New Chat & Search Row -->
-    <div class="sidebar-top-row">
-        <button class="new-chat-btn" onclick="startNewChat()">
-            <i class="fa-solid fa-pen-to-square me-2"></i> New Chat
-        </button>
+    <!-- Search Top Row -->
+    <div class="sidebar-top">
         <button class="search-btn" onclick="toggleSearch()" title="Search chats">
             <i class="fa-solid fa-magnifying-glass"></i>
         </button>
@@ -325,6 +319,11 @@ pre { margin:0 !important; padding:12px !important; overflow-x:auto; }
     <div id="searchContainer">
         <input type="text" id="chatSearchInput" placeholder="Search chats..." oninput="filterChats(this.value)">
     </div>
+
+    <!-- New Chat Button -->
+    <button class="new-chat-btn" onclick="prepareNewChat()">
+        <i class="fa-solid fa-pen-to-square me-2"></i> New Chat
+    </button>
 
     <!-- History List -->
     <div class="history-list" id="historyList"></div>
@@ -427,7 +426,7 @@ let selectedFile = null;
 let selectedFileDataURL = null;
 let contextSessionId = null;
 let longPressTimer = null;
-let currentSearchQuery = ""; // Search variable
+let currentSearchQuery = "";
 const questionInput = document.getElementById("question");
 const chatBox = document.getElementById("chatBox");
 const historyList = document.getElementById("historyList");
@@ -557,7 +556,7 @@ function toggleSearch() {
         container.style.display = "none";
         input.value = "";
         currentSearchQuery = "";
-        renderSidebarHistory(); // Reset list
+        renderSidebarHistory(); 
     }
 }
 
@@ -589,11 +588,13 @@ window.addEventListener("DOMContentLoaded", async function(){
         console.error("Database error:", error);
         allSessions = {};
     }
+    
+    // Check if there's an active session, otherwise show draft
     if(currentSessionId && allSessions[currentSessionId]){
         renderSidebarHistory();
         loadSession(currentSessionId);
     }else{
-        startNewChat(true);
+        prepareNewChat();
     }
 });
 
@@ -604,7 +605,7 @@ questionInput.addEventListener("input", function(){
     this.style.height = "auto";
     this.style.height = Math.min(this.scrollHeight, 120) + "px";
     
-    // Hide welcome screen on typing (ChatGPT behavior)
+    // Hide welcome screen on typing
     const welcomeEl = document.getElementById("welcomeScreen");
     if(welcomeEl && this.value.length > 0) {
         welcomeEl.style.display = "none";
@@ -700,19 +701,21 @@ function enableInputs() {
 }
 
 /* ============================================================
-   SESSIONS
+   SESSIONS (With Draft Mode)
 ============================================================ */
-function startNewChat(render = true){
-    currentSessionId = "session_" + Date.now() + "_" + Math.random().toString(36).substring(2,9);
-    allSessions[currentSessionId] = { id: currentSessionId, title: "New Chat", html: DEFAULT_WELCOME, isPinned: false, createdAt: Date.now(), updatedAt: Date.now() };
-    localStorage.setItem("zenthor_current_session_id", currentSessionId);
-    saveSession(allSessions[currentSessionId]);
-    if(render){
-        renderSidebarHistory();
-        loadSession(currentSessionId);
-    }
+function prepareNewChat() {
+    // Do NOT create a session yet. Just show the UI.
+    currentSessionId = null; 
+    localStorage.removeItem("zenthor_current_session_id");
+    
+    chatBox.innerHTML = DEFAULT_WELCOME;
+    if (globalLimitLocked) { disableInputs(); } else { enableInputs(); }
+    
+    renderSidebarHistory(); // No active chat highlighted
     mobileSidebarCheck();
+    questionInput.focus();
 }
+
 function loadSession(id){
     if(!allSessions[id]) return;
     currentSessionId = id;
@@ -724,6 +727,7 @@ function loadSession(id){
     renderSidebarHistory();
     mobileSidebarCheck();
 }
+
 async function deleteSession(event, id){
     if(event) event.stopPropagation();
     if(!allSessions[id]) return;
@@ -735,11 +739,13 @@ async function deleteSession(event, id){
         if(keys.length){
             keys.sort(function(a,b){ return (allSessions[b].updatedAt || 0) - (allSessions[a].updatedAt || 0); });
             currentSessionId = keys[0];
-        }else{ startNewChat(false); }
+            loadSession(currentSessionId);
+        }else{ 
+            prepareNewChat(); 
+        }
+    } else {
+        renderSidebarHistory();
     }
-    if(currentSessionId){ localStorage.setItem("zenthor_current_session_id", currentSessionId); }
-    renderSidebarHistory();
-    loadSession(currentSessionId);
 }
 
 function togglePin(event, id){
@@ -763,12 +769,11 @@ function renameSession(id){
 }
 
 /* ============================================================
-   SIDEBAR HISTORY (With Search Filter)
+   SIDEBAR HISTORY
 ============================================================ */
 function renderSidebarHistory(){
     historyList.innerHTML = "";
     
-    // Get all keys
     let keys = Object.keys(allSessions).sort(function(a,b){ return (allSessions[b].updatedAt || 0) - (allSessions[a].updatedAt || 0); });
     
     // Filter by search query
@@ -855,7 +860,6 @@ function toggleAttachMenu(e) {
     attachMenu.classList.toggle("show");
 }
 
-// Close menu when clicking outside
 document.addEventListener("click", function(e){
     if (attachMenu.classList.contains("show") && !attachMenu.contains(e.target) && !e.target.closest('.plus-btn')) {
         attachMenu.classList.remove("show");
@@ -978,6 +982,22 @@ document.getElementById("chatForm").addEventListener("submit", async function(e)
     e.preventDefault();
     const question = questionInput.value.trim();
     if(!question && !selectedFile) return;
+
+    // 🔥 DRAFT TO ACTIVE LOGIC: Create session only when user sends first message
+    if (!currentSessionId) {
+        currentSessionId = "session_" + Date.now() + "_" + Math.random().toString(36).substring(2,9);
+        allSessions[currentSessionId] = { 
+            id: currentSessionId, 
+            title: "New Chat", 
+            html: DEFAULT_WELCOME, 
+            isPinned: false, 
+            createdAt: Date.now(), 
+            updatedAt: Date.now() 
+        };
+        localStorage.setItem("zenthor_current_session_id", currentSessionId);
+        await saveSession(allSessions[currentSessionId]);
+        renderSidebarHistory();
+    }
 
     const welcomeEl = document.getElementById("welcomeScreen");
     if(welcomeEl) chatBox.innerHTML = "";
