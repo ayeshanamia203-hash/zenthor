@@ -65,16 +65,19 @@ _available_models = None
 # ============================================================
 
 CURRENT_KEYWORDS = [
-
     "latest", "today", "current", "now", "recent", "newest",
     "this week", "this month", "this year",
     "news", "update", "updates",
     "price", "cost", "worth", "net worth", "salary",
     "market cap", "stock price",
     
-    # নতুন যোগ করা কীওয়ার্ডসমূহ (ভ্যালুয়েশন ও রিয়েল টাইম ডেটার জন্য)
+    # ভ্যালুয়েশন ও রিয়েল টাইম ডেটা
     "valuation", "valued at", "revenue", "funding", "raised",
     "billion", "trillion", "million",
+    
+    # নতুন যোগ করা Superlatives (সবচেয়ে বড়/ধনী/সেরা বোঝাতে)
+    "most valuable", "richest", "top", "best", "largest", "highest",
+    "world's", "worlds",
     
     "score", "scores", "standings", "ranking", "rankings",
     "release date", "released", "launch", "launched",
@@ -87,6 +90,7 @@ CURRENT_KEYWORDS = [
     "বেতন", "সম্পদ", "নেট ওয়ার্থ", "স্কোর", "র‍্যাংক",
     "র‌্যাঙ্ক", "আবহাওয়া", "কত টাকা", "বর্তমানে",
     "এই মুহূর্তে", "সর্বশেষ খবর", "মূল্যায়ন", "ভ্যালুয়েশন", "আয়", "রাজস্ব",
+    "সবচেয়ে", "ধনী", "সেরা", "বড়",
 ]
 
 
@@ -117,11 +121,13 @@ def needs_web_search(question: str) -> bool:
 
     dynamic_patterns = [
         r"\bhow much\b.*\b(now|today|currently)\b",
-        r"\bwho is\b.*\b(current|now)\b",
-        r"\bwhat is\b.*\b(current|now|today)\b",
-        r"\bwhat's\b.*\b(current|now|today)\b",
+        r"\bwho is\b.*\b(current|now|most|best|richest|top)\b",
+        r"\bwhat is\b.*\b(current|now|today|most|best|richest|top)\b",
+        r"\bwhat's\b.*\b(current|now|today|most|best|richest|top)\b",
         r"\bhow many\b.*\b(currently|today)\b",
-        r"এখন.*কত", r"বর্তমানে.*কত", r"এখন.*কে",
+        # নতুন প্যাটার্ন: most valuable, richest, top company/person/ai
+        r"\b(most|best|top|largest|richest|highest)\b.*\b(valuable|ai|company|person|billionaire|world)\b",
+        r"এখন.*কত", r"বর্তমানে.*কত", r"এখন.*কে", r"সবচেয়ে.*কে", r"সবচেয়ে.*কত",
     ]
 
     for pattern in dynamic_patterns:
@@ -358,7 +364,7 @@ IMPORTANT:
 - Prefer recent and relevant results.
 - Do not invent unsupported details.
 - If the results conflict, explain the uncertainty.
-- ALWAYS use words like "Currently", "As of today", or "Now" when presenting this real-time data, so the user knows it is up-to-date.
+- ALWAYS use words like "Currently", "As of today", or "Now" when presenting this real-time data, so the user knows it is up-to-date and not old information.
 
 ---------------- WEB RESULTS ----------------
 
