@@ -30,13 +30,14 @@ from config import (
 # RAG ENGINE (Safe Import with Fallback)
 # ============================================================
 
-rag = None
-RAG_AVAILABLE = False
+rag= None
+
+RAG_AVAILABLE= False
 
 try:
     from rag_engine import RAGEngine
-    rag = RAGEngine(persist_directory=None)
-    RAG_AVAILABLE = True
+    rag=RAGEngine(persist_directory=None)
+    RAG_AVAILABLE= True
     print("RAG Engine loaded successfully (in-memory mode)")
 except Exception as e:
     print(f"RAG Engine could not be loaded: {str(e)}")
