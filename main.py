@@ -65,13 +65,13 @@ def check_and_increment_usage(client_ip: str, limit_type: str):
         max_limit = 25
         current = usage[user_key]["questions"]
         if current >= max_limit:
-            return False, current, max_limit, "🙅‍♂️ You've reached the daily limit of 25 questions. It resets at 00:00 UTC (6:00 AM Bangladesh time). Please try again tomorrow."
+            return False, current, max_limit, "🙅‍♂️ You've reached the daily limit of 25 questions. It resets at 00:00 UTC . Please try again tomorrow."
         usage[user_key]["questions"] += 1
     else:
         max_limit = 5
         current = usage[user_key]["files"]
         if current >= max_limit:
-            return False, current, max_limit, "📄 You've reached the daily limit of 5 file uploads. It resets at 00:00 UTC (6:00 AM Bangladesh time). Please try again tomorrow."
+            return False, current, max_limit, "📄 You've reached the daily limit of 5 file uploads. It resets at 00:00 UTC . Please try again tomorrow."
         usage[user_key]["files"] += 1
 
     save_usage(usage)
